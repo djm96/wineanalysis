@@ -1,0 +1,74 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+winedata <- read.csv("~/Documents/senior_year/stat471/final_project/wine-reviews/winemag-data-130k-v2.csv")
+```
+
+```{r}
+summary(winedata)
+names(winedata)
+```
+
+Creating new predictors based of the presense of certain words:
+```{r}
+grepl(c("tobacco|smoke"), winedata$description)
+```
+
+
+Take a subset of data to make PCA tinkering more efficent:
+```{r}
+winedata_subset = sample_n(winedata,50000)
+dtm_ready_df = winedata_subset[ ,c(1, 3)]
+```
+
+
+Okay, let's create a corpus, clean it, and create a DTM!
+```{r}
+library(tm)
+corp.original <- VCorpus(VectorSource(dtm_ready_df$description))
+corp = tm_map(corp.original, removePunctuation) 
+corp = tm_map(corp, removeNumbers) 
+corp = tm_map(corp, content_transformer(tolower) ,lazy=TRUE) 
+corp = tm_map(corp, content_transformer(removeWords), c("like") ,lazy=TRUE)
+corp = tm_map(corp, content_transformer(removeWords), stopwords("english") ,lazy=TRUE)
+corp = tm_map(corp, content_transformer(stemDocument) ,lazy=TRUE) 
+corp = tm_map(corp, stripWhitespace)
+
+# Convert to document term matrix
+dtm <- DocumentTermMatrix(corp)
+# Reduce matrix sparsity to better deal with LDA later on
+dtms = removeSparseTerms(dtm, .995)
+dtm_matrix = as.matrix(dtms)
+```
+
+Remove wines that have no description from DTM to avoid LDA errors
+```{r}
+rowTotals <- apply(dtm_matrix , 1, sum) #Find the sum of words in each Document
+dtm_matrix   <- dtm_matrix[rowTotals> 0, ]           #remove all docs without words
+```
+
+Conduct LDA for given number of topics
+```{r}
+library(topicmodels)
+number_of_topics = 30
+ldaOut <-LDA(dtm_matrix, number_of_topics, method="Gibbs")
+terms(ldaOut,10)
+```
+
+Generate the probabilities of each topic for each document
+```{r}
+dic = Terms(dtms)
+
+# Specify this dictionary when creating the dtm for the new articles, which will limit the dtm it creates to only the words that also appeared in the archive. In the example below, 'ldaOut' would be the name assigned to the topic model we created in Step earlier.
+
+new_dtm = DocumentTermMatrix(corp, control=list(dictionary = dic))
+new_dtm = new_dtm[rowSums(as.matrix(new_dtm))!=0,]
+topic_probabilities = posterior(ldaOut, new_dtm)
+```
