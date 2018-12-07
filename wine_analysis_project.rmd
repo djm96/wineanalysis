@@ -11,7 +11,9 @@ pacman::p_load(dplyr, ggplot2, glmnet, ggrepel, tm, wordcloud, RTextTools,
 setwd("C:/Users/george/Desktop/STAT 471/project")
 wine.dat <- read.csv("winemag-data-130k-v2.csv", encoding="UTF-8",stringsAsFactors=FALSE)
 ```
-The data was scraped from WineEnthusiast during the week of June 15th, 2017. Only wines with scores over 80 are kept in the dataset with nearly 13000 initial observations. The goal is to predict the variety, winery and location of wine based on description. 
+
+Wine is stable of modern fine dining culture and often the ones that reflect their origin or terroir garner the most praise from critics. It would be rather useful to be able to predict the variety, winery and location of wine based on description from the ciritics. This dataset is sraped from WineEnthusiast.com during the week of June 15th, 2017. Only wines with scores over 80 are kept in the dataset with nearly 13000 initial observations. 
+
 ##Data Cleaning/Summary
 ```{r,echo=F}
 #took out wines with unknown countries or price
@@ -25,7 +27,16 @@ wine.dat.clean.reg <- wine.dat.clean[wine.dat.clean$region_1!="",]
 cor(wine.dat.clean$points,wine.dat.clean$price)
 multi.hist(wine.dat.clean[,sapply(wine.dat.clean, is.numeric)])
 ```
+First we removed the numerative column for repetitiveness, then region_2 was removed as well because of the excess amount of NA and specificity. We also removed observations with NAs in price and country because those are likely to be important predictors of sentiment. We then created a separate dataset with NAs from region_1 removed since some countries are simply to small to have regional specificity so we don't want to pollute the data. 
 
+Wine price and points are somewhat correlated, with about 0.416 correlation coefficient. This makes sense because tasters generally try to avoid a priori knowledge about wine characteristics before tasting in order to be objective. However, the amount of effort that went into more expensively priced wine would reflect somewhat in the quality. 
+
+Looking at the histograms of points and prices we can observe their distributional differences. While points are distributred relatively normally, prices are right-skewed with a few extremely expensive wines. 
+
+```{r,echo=F}
+wine.dat.clean %>% filter(taster_name!="") %>% group_by(taster_name) %>% summarise(num_wine_tasted=n()) %>% arrange(desc(num_wine_tasted))
+```
+There are a total of 19 wine tasters that contribute to this datasets. Most of them are rather prolific and cover thousands of wine. The most prolific of which is Roger Voss who is an editor for WineEnthusiast and covers most of France. 
 ```{r,echo=F}
 province_dat <- wine.dat.clean %>% group_by(province) %>% summarize(mean_points=mean(points),mean_price=mean(price)) %>%
   arrange(desc(mean_points,mean_price)) %>% 
@@ -42,7 +53,7 @@ ggplot(province_dat[1:10,],aes(mean_points,mean_price)) +
   labs(title="Top 10 Provinces With the Highest Scores", 
        x="Mean Points", y="Mean Price")
 ```
-Surprisingly, none of the traditional wine provinces such as Burgundy, Bordeaux or Northern California made it into this list. This is likely due to the large volume of wine produced in those regions which has an effect on the wine's average quality. 
+Surprisingly, none of the traditional wine provinces such as Burgundy, Bordeaux or Northern California made it into the top 10 average points province list. This is likely due to the large volume of wine produced in those regions which has an effect on the wine's average quality. 
 ```{r,echo=F}
 region_dat <- wine.dat.clean.reg %>% group_by(region_1) %>% summarize(mean_points=mean(points),mean_price=mean(price)) %>%
   arrange(desc(mean_points,mean_price)) %>% 
@@ -79,15 +90,11 @@ ggplot(winery_dat[1:10,],aes(mean_points,mean_price)) +
        x="Mean Points", y="Mean Price")
 ```
 
-Generally European wineries charge a higher price than their californian counterparts despite similairty in points. This reflects the higher esteem held by French wine despite the blind tasting catastrophe that it suffered during the 1976 Judgment of Paris. 
+Generally European wineries charge a higher price than their Californian counterparts despite similairty in points. This reflects the higher esteem held by French wine despite the blind tasting catastrophe that it suffered during the 1976 Judgment of Paris. 
 
 ```{r}
 wine.dat.clean %>% filter(winery!="") %>% group_by(winery) %>% summarise(num_produced=n()) %>% arrange(desc(num_produced)) %>%
   mutate(province=wine.dat.clean[match(winery,wine.dat.clean$winery),6])
-```
-
-```{r,echo=F}
-wine.dat.clean %>% filter(taster_name!="") %>% group_by(taster_name) %>% summarise(num_wine_tasted=n()) %>% arrange(desc(num_wine_tasted))
 ```
 
 ##Corpus Analysis
