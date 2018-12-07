@@ -62,7 +62,7 @@ ldaOut <-LDA(dtm_matrix, number_of_topics, method="Gibbs")
 terms(ldaOut,10)
 ```
 
-Generate the probabilities of each topic for each document
+Generate the probabilities of each topic for each document:
 ```{r}
 dic = Terms(dtms)
 
