@@ -139,6 +139,13 @@ data.frame(variables = (1:length(subsets.fit$rsq)),
            cp = subsets.fit$cp)
 plot(subsets.fit$rsq, xlab="Number of predictors", ylab="R-square", col="red", type="p", pch=16)
 plot(subsets.fit$rss, xlab="Number of predictors", ylab="RSS", col="blue", type="p", pch=16)
+
+plot(subsets.fit$cp, xlab="Number of predictors", 
+     ylab="cp", col="red", type="p", pch=16)
+plot(subsets.fit$bic, xlab="Number of predictors", 
+     ylab="bic", col="blue", type="p", pch=16)
+plot(subsets.fit$adjr2, xlab="Number of predictors", 
+     ylab="adjr2", col="green", type="p", pch=16)
 ```
 
 
