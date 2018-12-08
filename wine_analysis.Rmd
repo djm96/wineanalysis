@@ -126,14 +126,18 @@ Generate a model:
 
 summary(lm(points ~ log(price) + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, articles_w_topics20))
 
+# Run regsubsets for model selection
 subsets = regsubsets(points ~ log(price) + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, data=articles_w_topics20, nvmax=25)
 
+#sumarize and print results
 subsets.fit = summary(subsets)
+subsets.fit$which
 data.frame(variables = (1:length(subsets.fit$rsq)),
            r_squared = subsets.fit$rsq,
            rss = subsets.fit$rss,
            bic = subsets.fit$bic,
            cp = subsets.fit$cp)
+plot(subsets.fit$rss, xlab="Number of predictors", ylab="RSS", col="blue", type="p", pch=16)
 ```
 
 
