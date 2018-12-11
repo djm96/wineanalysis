@@ -18,6 +18,7 @@ names(winedata)
 
 remove duplicated rows:
 ```{r}
+winedata <- winedata[,-c(1,9)]
 winedata_unique = unique(winedata[,-1])
 ```
 
@@ -27,6 +28,113 @@ winedata_clean <- winedata_unique[!is.na(winedata_unique$price),]
 winedata_clean <- winedata_clean[winedata_unique$country!="",]
 winedata_clean <- winedata_clean[winedata_unique$description!="",]
 winedata_clean.reg <- winedata_clean[winedata_unique$region_1!="",]
+```
+
+Wine is stable of modern fine dining culture and often the ones that reflect their origin or terroir garner the most praise from critics. It would be rather useful to be able to predict the variety, winery and location of wine based on description from the ciritics. This dataset is sraped from WineEnthusiast.com during the week of June 15th, 2017. Only wines with scores over 80 are kept in the dataset with nearly 13000 initial observations. 
+
+##Data Cleaning/Summary
+```{r,echo=F}
+#price and Not very correlated
+cor(winedata_clean$points,winedata_clean$price)
+multi.hist(winedata_clean[,sapply(winedata_clean, is.numeric)])
+```
+First we removed the numerative column for repetitiveness, then region_2 was removed as well because of the excess amount of NA and specificity. We also removed observations with NAs in price and country because those are likely to be important predictors of sentiment. We then created a separate dataset with NAs from region_1 removed since some countries are simply to small to have regional specificity so we don't want to pollute the data. 
+
+Wine price and points are somewhat correlated, with about 0.416 correlation coefficient. This makes sense because tasters generally try to avoid a priori knowledge about wine characteristics before tasting in order to be objective. However, the amount of effort that went into more expensively priced wine would reflect somewhat in the quality. 
+
+Looking at the histograms of points and prices we can observe their distributional differences. While points are distributred relatively normally, prices are right-skewed with a few extremely expensive wines. 
+
+```{r,echo=F}
+winedata_clean %>% filter(taster_name!="") %>% group_by(taster_name) %>% summarise(num_wine_tasted=n()) %>% arrange(desc(num_wine_tasted))
+```
+There are a total of 19 wine tasters that contribute to this datasets. Most of them are rather prolific and cover thousands of wine. The most prolific of which is Roger Voss who is an editor for WineEnthusiast and covers most of France. 
+
+```{r,echo=F}
+winedata_clean %>% group_by(country) %>% summarize(mean_points=mean(points),mean_price=mean(price),n_wines_produced=n()) %>%
+  arrange(desc(n_wines_produced,mean_points,mean_price))
+```
+
+```{r}
+winedata_clean %>% group_by(province) %>% summarize(mean_points=mean(points),mean_price=mean(price),n_wines_produced=n()) %>%
+  arrange(desc(n_wines_produced,mean_points,mean_price)) %>%
+    mutate(country=winedata_clean[match(province,winedata_clean$province),1]) %>% filter(country %in% c("US","France","Italy","Spain","Portugal"),
+                                                                                         n_wines_produced > 1000)
+```
+
+While mean points and mean price on a country level can tell us in some ways the general wine quality in a given country. These qualities should be taken with reservations since the countries like US and France dominate the market in terms of number of wines produced which would dilute the mean. This also implies that country would not be a good variable to predict because of the variation of wine quality across the aforementioned powerhouses of wine production. 
+
+```{r}
+winedata_clean %>% group_by(variety) %>% summarize(mean_points=mean(points),mean_price=mean(price),n_wines_produced=n()) %>%
+  arrange(desc(n_wines_produced,mean_points,mean_price))
+```
+
+
+```{r,echo=F}
+province_dat <- winedata_clean %>% group_by(province) %>% summarize(mean_points=mean(points),mean_price=mean(price)) %>%
+  arrange(desc(mean_points,mean_price)) %>% 
+  mutate(country=winedata_clean[match(province,winedata_clean$province),1],
+         prov_country=paste(province,",",country))
+
+province_100_dat <- winedata_clean %>% group_by(province) %>% summarize(mean_points=mean(points),mean_price=mean(price), n_wine=n()) %>%
+  filter(n_wine>=100) %>%
+  arrange(desc(mean_points,mean_price)) %>% 
+  mutate(country=winedata_clean[match(province,winedata_clean$province),1],
+         prov_country=paste(province,",",country))
+
+ggplot(province_100_dat[1:10,],aes(mean_points,mean_price)) +
+  geom_point() +
+  geom_label_repel(aes(label=prov_country),
+                   box.padding   = 0.35, 
+                   point.padding = 0.5,
+                   segment.color = 'grey50') +
+  theme_classic() +
+  labs(title="Top 10 Provinces With the Highest Scores", 
+       x="Mean Points", y="Mean Price")
+```
+Looking at provinces is a much better idea as each one in general has much similar geographical features and climate, allowing for more consistent wine quality within each categorical level. However, even provincial level aggregation may be too broad. None of the traditional wine provinces such as Burgundy, Bordeaux or Northern California made it into the top 10 average points province list. This is likely due to the large volume of wine produced in those regions which has an effect on the wine's average quality. Meanwhile small regions like Madeira (a Portuguese Atlantic island) are likely to have limited wine outputs. 
+```{r,echo=F}
+region_dat <- winedata_clean.reg %>% group_by(region_1) %>% summarize(mean_points=mean(points),mean_price=mean(price)) %>%
+  arrange(desc(mean_points,mean_price)) %>% 
+  mutate(country=winedata_clean.reg[match(region_1,winedata_clean.reg$region_1),1],
+         province=winedata_clean.reg[match(region_1,winedata_clean.reg$region_1),6],
+         reg_prov=paste(region_1,",",province))
+
+ggplot(region_dat[1:10,],aes(mean_points,mean_price)) +
+  geom_point() +
+  geom_label_repel(aes(label=reg_prov),
+                   box.padding   = 0.35, 
+                   point.padding = 0.5,
+                   segment.color = 'grey50') +
+  theme_classic() +
+  labs(title="Top 10 Regions With the Highest Scores", 
+       x="Mean Points", y="Mean Price")
+```
+
+
+Although the majority of observations also contain a region value, the lack of it does not necessarily guarantee that the observation is faulty since many wines are from small countries or too non-specific in its origin to warrant region specifications. On the flip side, having a regional label also does not gurantee its quality. Majority of wine-producing regions with high points are located in Burgundy. This has historical reasons. Compared to Bordeaux and other regions that place emphasis on individual chateaus or wineries, Burgundy is famous for its regional consistency as all wines made from the same area, no matter the prodoucer, is often labeled as the same variety. This speaks to Burgundian winemakers' confidence in the reputation of its terroir, or the set of all attributes of the phenotype of the land. 
+```{r,echo=F}
+winery_dat <- winedata_clean %>% group_by(winery) %>% summarize(mean_points=mean(points),mean_price=mean(price)) %>%
+  arrange(desc(mean_points,mean_price)) %>%
+  mutate(country=winedata_clean[match(winery,winedata_clean$winery),1],
+         province=winedata_clean[match(winery,winedata_clean$winery),6],
+         winery_prov=paste(winery,",",province))
+
+ggplot(winery_dat[1:10,],aes(mean_points,mean_price)) +
+  geom_point() +
+  geom_label_repel(aes(label=winery_prov),
+                   box.padding   = 0.35, 
+                   point.padding = 0.3,
+                   segment.color = 'grey50') +
+  theme_classic() +
+  labs(title="Top 10 Wineries With the Highest Scores", 
+       x="Mean Points", y="Mean Price")
+```
+
+Generally European wineries charge a higher price than their Californian counterparts despite similairty in points. This reflects the higher esteem held by French wine despite the blind tasting catastrophe that it suffered during the 1976 Judgment of Paris. 
+
+```{r}
+winedata_clean %>% filter(winery!="") %>% group_by(winery) %>% summarise(num_produced=n()) %>% arrange(desc(num_produced)) %>%
+  mutate(province=winedata_clean[match(winery,winedata_clean$winery),6])
 ```
 
 Take a subset of data to make PCA tinkering more efficent:
@@ -203,6 +311,9 @@ test_MSE <- mean(((test$points - predict.lm(final.lm, test))^2),na.rm = TRUE)
 test_MSE
 ```
 
+```{r}
+terms(ldaOut20_all,10)
+```
 
 
 
