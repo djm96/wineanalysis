@@ -16,13 +16,26 @@ summary(winedata)
 names(winedata)
 ```
 
+remove duplicated rows:
+```{r}
+winedata_unique = unique(winedata[,-1])
+```
+
+Take out entries with missing values in important categories:
+```{r}
+winedata_clean <- winedata_unique[!is.na(winedata_unique$price),]
+winedata_clean <- winedata_unique[winedata_unique$country!="",]
+winedata_clean <- winedata_unique[winedata_unique$description!="",]
+winedata_clean.reg <- winedata_unique[winedata_unique$region_1!="",]
+```
 
 Take a subset of data to make PCA tinkering more efficent:
 ```{r}
-winedata_subset = sample_n(winedata,50000)
+#Uncomment line below to take subset of data
+#winedata_subset = sample_n(winedata,50000)
 #Uncomment line below to use entire dataset instead of subset
-winedata_subset = winedata
-dtm_ready_df = winedata_subset[ ,c(1, 3)]
+winedata_subset = winedata_clean
+dtm_ready_df = winedata_subset[ ,c(1, 2)]
 ```
 
 
@@ -124,10 +137,10 @@ Generate a model:
 ```{r}
 # summary(lm(points ~ log(price)+ taster_name + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20 + topic_21 + topic_22 + topic_23 + topic_24 + topic_25 + topic_26 + topic_27 + topic_28 + topic_29 + topic_30, articles_w_topics30))
 
-summary(lm(points ~ log(price) + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, articles_w_topics20))
+summary(lm(points ~ log(price) + taster_twitter_handle + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, articles_w_topics20))
 
 # Run regsubsets for model selection
-subsets = regsubsets(points ~ log(price) + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, data=articles_w_topics20, nvmax=25)
+subsets = regsubsets(points ~ log(price) + taster_twitter_handle + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, data=articles_w_topics20, nvmax=50,method="backward")
 
 #sumarize and print results
 subsets.fit = summary(subsets)
@@ -148,7 +161,9 @@ plot(subsets.fit$adjr2, xlab="Number of predictors",
      ylab="adjr2", col="green", type="p", pch=16)
 ```
 
+```{r}
 
+```
 
 
 
