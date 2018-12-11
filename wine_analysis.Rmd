@@ -24,9 +24,9 @@ winedata_unique = unique(winedata[,-1])
 Take out entries with missing values in important categories:
 ```{r}
 winedata_clean <- winedata_unique[!is.na(winedata_unique$price),]
-winedata_clean <- winedata_unique[winedata_unique$country!="",]
-winedata_clean <- winedata_unique[winedata_unique$description!="",]
-winedata_clean.reg <- winedata_unique[winedata_unique$region_1!="",]
+winedata_clean <- winedata_clean[winedata_unique$country!="",]
+winedata_clean <- winedata_clean[winedata_unique$description!="",]
+winedata_clean.reg <- winedata_clean[winedata_unique$region_1!="",]
 ```
 
 Take a subset of data to make PCA tinkering more efficent:
@@ -190,7 +190,7 @@ final.lm <- lm(points ~ log(price) + taster_name +  vintage_year_cat + topic_1 +
 
 summary(final.lm)
 
-test_MSE <- mean((test$points - predict.lm(final.lm, test)) ^ 2)
+test_MSE <- mean((test$points - predict.lm(final.lm, test))^2)
 test_MSE
 ```
 
