@@ -134,6 +134,13 @@ articles_w_topics20$vintage_year_cat[articles_w_topics20$vintage_year>=1980&arti
 articles_w_topics20$vintage_year_cat[articles_w_topics20$vintage_year>=1950&articles_w_topics20$vintage_year<=1979] <- "1950-1979"
 ```
 
+```{r}
+articles_w_topics20$country_trimmed = "Other"
+articles_w_topics20$country_trimmed[articles_w_topics20$country=="Italy"] <- "Italy"
+articles_w_topics20$country_trimmed[articles_w_topics20$country=="France"] <- "France"
+articles_w_topics20$country_trimmed[articles_w_topics20$country=="US"] <- "US"
+```
+
 Now let's create a train test split:
 ```{r}
 set.seed(42) # Set Seed so that same sample can be reproduced in future also
@@ -163,7 +170,7 @@ Generate a model:
 summary(lm(points ~ log(price) + taster_name + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, train))
 
 # Run regsubsets for model selection
-subsets = regsubsets(points ~ log(price) + taster_name + country + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, data=train, nvmax=50,method="backward")
+subsets = regsubsets(points ~ log(price) + taster_name + country_trimmed + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, data=train, nvmax=50,method="backward")
 
 #sumarize and print results
 subsets.fit = summary(subsets)
@@ -173,6 +180,8 @@ data.frame(variables = (1:length(subsets.fit$rsq)),
            rss = subsets.fit$rss,
            bic = subsets.fit$bic,
            cp = subsets.fit$cp)
+coef(subsets,20)
+
 plot(subsets.fit$rsq, xlab="Number of predictors", ylab="R-square", col="red", type="p", pch=16)
 plot(subsets.fit$rss, xlab="Number of predictors", ylab="RSS", col="blue", type="p", pch=16)
 
@@ -186,7 +195,7 @@ plot(subsets.fit$adjr2, xlab="Number of predictors",
 
 final model
 ```{r}
-final.lm <- lm(points ~ log(price) + taster_name +  vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, data=train)
+final.lm <- lm(points ~ log(price) + taster_name  + country_trimmed + topic_1 + topic_2 + topic_3 + topic_5 + topic_7 +  topic_8 + topic_10 + topic_11 + topic_14 + topic_15 + topic_17, data=train)
 
 summary(final.lm)
 
