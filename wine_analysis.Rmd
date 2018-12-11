@@ -122,6 +122,7 @@ yearExtract <- function(string) {
 Use our new function to extract the vintage year from wine title. Note, around 5% of wines don't have a year in the title and the regex match can possibly catch a 4 digit number other than year if present.
 ```{r}
 articles_w_topics20$vintage_year = (yearExtract(as.character(articles_w_topics20$title)))
+articles_w_topics20 <- articles_w_topics20[!is.na(articles_w_topics20$vintage_year),]
 ```
 
 Create a new variable that is a categorical grouping of the year.
@@ -137,9 +138,9 @@ Now let's create a train test split:
 ```{r}
 set.seed(42) # Set Seed so that same sample can be reproduced in future also
 # Now Selecting 80% of data as sample from total 'n' rows of the data  
-sample <- sample.int(n = nrow(winedata_clean), size = floor(.80*nrow(winedata_clean)), replace = F)
-train <- winedata_clean[sample, ]
-test  <- winedata_clean[-sample, ]
+sample <- sample.int(n = nrow(articles_w_topics20), size = floor(.80*nrow(articles_w_topics20)), replace = F)
+train <- articles_w_topics20[sample, ]
+test  <- articles_w_topics20[-sample, ]
 ```
 
 PCA - not effective because topics are calculated to assume minimum correlation
@@ -159,10 +160,10 @@ Generate a model:
 ```{r}
 # summary(lm(points ~ log(price)+ taster_name + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20 + topic_21 + topic_22 + topic_23 + topic_24 + topic_25 + topic_26 + topic_27 + topic_28 + topic_29 + topic_30, articles_w_topics30))
 
-summary(lm(points ~ log(price) + taster_name + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, articles_w_topics20))
+summary(lm(points ~ log(price) + taster_name + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, train))
 
 # Run regsubsets for model selection
-subsets = regsubsets(points ~ log(price) + taster_name + country + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, data=articles_w_topics20, nvmax=50,method="backward")
+subsets = regsubsets(points ~ log(price) + taster_name + country + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, data=train, nvmax=50,method="backward")
 
 #sumarize and print results
 subsets.fit = summary(subsets)
@@ -185,12 +186,12 @@ plot(subsets.fit$adjr2, xlab="Number of predictors",
 
 final model
 ```{r}
-final.lm <- lm(points ~ log(price) + taster_name + country + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, data=articles_w_topics20)
+final.lm <- lm(points ~ log(price) + taster_name +  vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, data=train)
 
-final.lm.1 <- lm(points ~ log(price) + taster_name + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, data=articles_w_topics20)
-
-anova(final.lm.1,final.lm)
 summary(final.lm)
+
+test_MSE <- mean((test$points - predict.lm(final.lm, test)) ^ 2)
+test_MSE
 ```
 
 
