@@ -85,7 +85,7 @@ topic_probabilities20 = posterior(ldaOut20_all, new_dtm)
 
 Run this chunk to generate a dataframe that gives the highest ranked topic for each wine.
 ```{r}
-articles_w_topics20 = as.data.frame(cbind(winedata[rowTotals> 0, ], max.col(topic_probabilities20$topics)))
+articles_w_topics20 = as.data.frame(cbind(winedata_clean[rowTotals> 0, ], max.col(topic_probabilities20$topics)))
 # Rename a column in R
 colnames(articles_w_topics20)[colnames(articles_w_topics20)=="max.col(topic_probabilities20$topics)"] <- "topic"
 articles_w_topics20$topic = as.factor(articles_w_topics20$topic)
@@ -190,7 +190,7 @@ final.lm <- lm(points ~ log(price) + taster_name +  vintage_year_cat + topic_1 +
 
 summary(final.lm)
 
-test_MSE <- mean((test$points - predict.lm(final.lm, test))^2)
+test_MSE <- mean(((test$points - predict.lm(final.lm, test))^2),na.rm = TRUE)
 test_MSE
 ```
 
