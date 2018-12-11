@@ -1,12 +1,13 @@
 ##Reading the data
 ```{r}
+rm(list=ls())
 knitr::opts_chunk$set(echo = TRUE, 
                       tidy = TRUE, fig.width = 7, fig.height = 4,
                       fig.align='left', dev = 'pdf')
 if(!require("pacman")) install.packages("pacman")
 
 pacman::p_load(dplyr, ggplot2, glmnet, ggrepel, tm, wordcloud, RTextTools,
-               data.table,psych)
+               data.table,psych,topicmodels)
 
 setwd("C:/Users/george/Desktop/STAT 471/project")
 wine.dat <- read.csv("winemag-data-130k-v2.csv", encoding="UTF-8",stringsAsFactors=FALSE)
@@ -21,6 +22,7 @@ summary(wine.dat)
 wine.dat <- wine.dat[,-c(1,9)]
 wine.dat.clean <- wine.dat[!is.na(wine.dat$price),]
 wine.dat.clean <- wine.dat.clean[wine.dat.clean$country!="",]
+wine.dat.clean <- wine.dat.clean[wine.dat.clean$description!="",]
 wine.dat.clean.reg <- wine.dat.clean[wine.dat.clean$region_1!="",]
 
 #price and Not very correlated
@@ -37,13 +39,32 @@ Looking at the histograms of points and prices we can observe their distribution
 wine.dat.clean %>% filter(taster_name!="") %>% group_by(taster_name) %>% summarise(num_wine_tasted=n()) %>% arrange(desc(num_wine_tasted))
 ```
 There are a total of 19 wine tasters that contribute to this datasets. Most of them are rather prolific and cover thousands of wine. The most prolific of which is Roger Voss who is an editor for WineEnthusiast and covers most of France. 
+
+```{r,echo=F}
+wine.dat.clean %>% group_by(country) %>% summarize(mean_points=mean(points),mean_price=mean(price),n_wines_produced=n()) %>%
+  arrange(desc(n_wines_produced,mean_points,mean_price))
+```
+While mean points and mean price on a country level can tell us in some ways the general wine quality in a given country. These qualities should be taken with reservations since the countries like US and France dominate the market in terms of number of wines produced which would dilute the mean. This also implies that country would not be a good variable to predict because of the variation of wine quality across the aforementioned powerhouses of wine production. 
+
+```{r}
+wine.dat.clean %>% group_by(variety) %>% summarize(mean_points=mean(points),mean_price=mean(price),n_wines_produced=n()) %>%
+  arrange(desc(n_wines_produced,mean_points,mean_price))
+```
+
+
 ```{r,echo=F}
 province_dat <- wine.dat.clean %>% group_by(province) %>% summarize(mean_points=mean(points),mean_price=mean(price)) %>%
   arrange(desc(mean_points,mean_price)) %>% 
   mutate(country=wine.dat.clean[match(province,wine.dat.clean$province),1],
          prov_country=paste(province,",",country))
 
-ggplot(province_dat[1:10,],aes(mean_points,mean_price)) +
+province_100_dat <- wine.dat.clean %>% group_by(province) %>% summarize(mean_points=mean(points),mean_price=mean(price), n_wine=n()) %>%
+  filter(n_wine>=100) %>%
+  arrange(desc(mean_points,mean_price)) %>% 
+  mutate(country=wine.dat.clean[match(province,wine.dat.clean$province),1],
+         prov_country=paste(province,",",country))
+
+ggplot(province_100_dat[1:10,],aes(mean_points,mean_price)) +
   geom_point() +
   geom_label_repel(aes(label=prov_country),
                    box.padding   = 0.35, 
@@ -53,7 +74,7 @@ ggplot(province_dat[1:10,],aes(mean_points,mean_price)) +
   labs(title="Top 10 Provinces With the Highest Scores", 
        x="Mean Points", y="Mean Price")
 ```
-Surprisingly, none of the traditional wine provinces such as Burgundy, Bordeaux or Northern California made it into the top 10 average points province list. This is likely due to the large volume of wine produced in those regions which has an effect on the wine's average quality. 
+Looking at provinces is a much better idea as each one in general has much similar geographical features and climate, allowing for more consistent wine quality within each categorical level. However, even provincial level aggregation may be too broad. None of the traditional wine provinces such as Burgundy, Bordeaux or Northern California made it into the top 10 average points province list. This is likely due to the large volume of wine produced in those regions which has an effect on the wine's average quality. Meanwhile small regions like Madeira (a Portuguese Atlantic island) are likely to have limited wine outputs. 
 ```{r,echo=F}
 region_dat <- wine.dat.clean.reg %>% group_by(region_1) %>% summarize(mean_points=mean(points),mean_price=mean(price)) %>%
   arrange(desc(mean_points,mean_price)) %>% 
@@ -71,7 +92,9 @@ ggplot(region_dat[1:10,],aes(mean_points,mean_price)) +
   labs(title="Top 10 Regions With the Highest Scores", 
        x="Mean Points", y="Mean Price")
 ```
-Majority of wines with high points are from specific regions in Burgundy. This has historical reasons. Compared to Bordeaux and other regions that place emphasis on individual chateaus or wineries, Burgundy is famous for its regional consistency as all wines made from the same area, no matter the prodoucer, is often labeled as the same variety. This speaks to Burgundian winemakers' confidence in the reputation of its terroir, or the set of all attributes of the phenotype of the land. 
+
+
+Although the majority of observations also contain a region value, the lack of it does not necessarily guarantee that the observation is faulty since many wines are from small countries or too non-specific in its origin to warrant region specifications. On the flip side, having a regional label also does not gurantee its quality. Majority of wine-producing regions with high points are located in Burgundy. This has historical reasons. Compared to Bordeaux and other regions that place emphasis on individual chateaus or wineries, Burgundy is famous for its regional consistency as all wines made from the same area, no matter the prodoucer, is often labeled as the same variety. This speaks to Burgundian winemakers' confidence in the reputation of its terroir, or the set of all attributes of the phenotype of the land. 
 ```{r,echo=F}
 winery_dat <- wine.dat.clean %>% group_by(winery) %>% summarize(mean_points=mean(points),mean_price=mean(price)) %>%
   arrange(desc(mean_points,mean_price)) %>%
@@ -104,13 +127,19 @@ set.seed(1)
 wine.dat.sample <- wine.dat.clean[sample(1:nrow(wine.dat.clean),10000,replace=FALSE),]
 wine.corpus <- VCorpus(VectorSource(wine.dat.sample$description))
 wine.corpus <- tm_map(wine.corpus, content_transformer(tolower))
-wine.corpus <- tm_map(wine.corpus, removeWords, stopwords("english"))
+wine.corpus <- tm_map(wine.corpus, removeWords, stopwords("english"), lazy=FALSE)
 wine.corpus <- tm_map(wine.corpus, removePunctuation)
 wine.corpus <- tm_map(wine.corpus, removeNumbers)
 wine.corpus <- tm_map(wine.corpus, stemDocument, lazy = TRUE) 
 
-wine.dtm <- DocumentTermMatrix(wine.corpus) 
+wine.dtm <- DocumentTermMatrix(wine.corpus)
 threshold <- .01*length(wine.corpus)
 wine.words <- findFreqTerms(wine.dtm, lowfreq=threshold)
 wine.words[1:20]
 ```
+
+```{r}
+wine_lda <- load("C:/Users/george/Desktop/STAT 471/project/lda_20_image.RData")
+terms(ldaOut,10)
+```
+
