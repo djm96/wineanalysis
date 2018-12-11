@@ -142,14 +142,27 @@ train <- winedata_clean[sample, ]
 test  <- winedata_clean[-sample, ]
 ```
 
+PCA - not effective because topics are calculated to assume minimum correlation
+```{r}
+topics <- prcomp(articles_w_topics20[,c(15:34)], scale=TRUE)
+round(topics$rotation, 5)
+
+cpve <- 100*cumsum((topics$sdev)^2)/20   
+
+# Scree plot of CPVE's
+plot(seq(1:20), cpve, pch=16, ylim=c(0, 100),
+     main="Cumulative Proportion of Variance Explained",
+     xlab="Number of PC's Used")
+```
+
 Generate a model:
 ```{r}
 # summary(lm(points ~ log(price)+ taster_name + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20 + topic_21 + topic_22 + topic_23 + topic_24 + topic_25 + topic_26 + topic_27 + topic_28 + topic_29 + topic_30, articles_w_topics30))
 
-summary(lm(points ~ log(price) + taster_twitter_handle + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, articles_w_topics20))
+summary(lm(points ~ log(price) + taster_name + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, articles_w_topics20))
 
 # Run regsubsets for model selection
-subsets = regsubsets(points ~ log(price) + taster_twitter_handle + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, data=articles_w_topics20, nvmax=50,method="backward")
+subsets = regsubsets(points ~ log(price) + taster_name + country + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, data=articles_w_topics20, nvmax=50,method="backward")
 
 #sumarize and print results
 subsets.fit = summary(subsets)
@@ -170,8 +183,14 @@ plot(subsets.fit$adjr2, xlab="Number of predictors",
      ylab="adjr2", col="green", type="p", pch=16)
 ```
 
+final model
 ```{r}
+final.lm <- lm(points ~ log(price) + taster_name + country + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, data=articles_w_topics20)
 
+final.lm.1 <- lm(points ~ log(price) + taster_name + vintage_year_cat + topic_1 + topic_2 + topic_3 + topic_4 + topic_5 + topic_6 + topic_7 + topic_8 + topic_9 + topic_10 + topic_11 + topic_12 + topic_13 + topic_14 + topic_15 + topic_16 + topic_17 + topic_18 + topic_19 + topic_20, data=articles_w_topics20)
+
+anova(final.lm.1,final.lm)
+summary(final.lm)
 ```
 
 
