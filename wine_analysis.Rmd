@@ -8,6 +8,7 @@ This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute
 Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
 
 ```{r}
+library(tidyr)
 winedata <- read.csv("~/Documents/senior_year/stat471/final_project/wine-reviews/winemag-data-130k-v2.csv")
 ```
 
@@ -247,7 +248,26 @@ articles_w_topics20$country_trimmed = "Other"
 articles_w_topics20$country_trimmed[articles_w_topics20$country=="Italy"] <- "Italy"
 articles_w_topics20$country_trimmed[articles_w_topics20$country=="France"] <- "France"
 articles_w_topics20$country_trimmed[articles_w_topics20$country=="US"] <- "US"
+articles_w_topics20$country_trimmed <- as.factor(articles_w_topics20$country_trimmed)
 ```
+
+```{r}
+country_topic <- articles_w_topics20 %>% filter(!(country_trimmed %in% "Other")) %>% group_by(country_trimmed) %>% summarise(m_topic_1 = mean(topic_1), m_topic_2 = mean(topic_2), m_topic_3 = mean(topic_3), m_topic_4 = mean(topic_4), m_topic_5 = mean(topic_5), m_topic_6 = mean(topic_6), m_topic_7 = mean(topic_7), m_topic_8 = mean(topic_8), m_topic_9 = mean(topic_9), m_topic_10 = mean(topic_10), m_topic_11 = mean(topic_11), m_topic_12 = mean(topic_12), m_topic_13 = mean(topic_13), m_topic_14 = mean(topic_14), m_topic_15 = mean(topic_15), m_topic_16 = mean(topic_16), m_topic_17 = mean(topic_17), m_topic_18 = mean(topic_18), m_topic_19 = mean(topic_19), m_topic_20 = mean(topic_20))
+
+cbind(country_topic,max_prob_topic=
+colnames(country_topic[-1])[max.col(country_topic[-1],ties.method="first")])
+```
+France: m_topic_3 (soft, fruity flavor)
+Italy: m_topic_6 (spicy, tannic flavor)
+US: m_topic_5 (blend of different grapes variety)
+
+```{r}
+province_topic <- articles_w_topics20 %>% filter(!(country_trimmed %in% "Other")) %>% group_by(province) %>% summarise(m_topic_1 = mean(topic_1), m_topic_2 = mean(topic_2), m_topic_3 = mean(topic_3), m_topic_4 = mean(topic_4), m_topic_5 = mean(topic_5), m_topic_6 = mean(topic_6), m_topic_7 = mean(topic_7), m_topic_8 = mean(topic_8), m_topic_9 = mean(topic_9), m_topic_10 = mean(topic_10), m_topic_11 = mean(topic_11), m_topic_12 = mean(topic_12), m_topic_13 = mean(topic_13), m_topic_14 = mean(topic_14), m_topic_15 = mean(topic_15), m_topic_16 = mean(topic_16), m_topic_17 = mean(topic_17), m_topic_18 = mean(topic_18), m_topic_19 = mean(topic_19), m_topic_20 = mean(topic_20), n_wine = n()) %>% filter(n_wine>1000)
+
+cbind(province_topic,max_prob_topic=
+colnames(province_topic[c(-1,-22,-23)])[max.col(province_topic[c(-1,-22,-23)],ties.method="first")])
+```
+
 
 Now let's create a train test split:
 ```{r}
@@ -260,7 +280,7 @@ test  <- articles_w_topics20[-sample, ]
 
 PCA - not effective because topics are calculated to assume minimum correlation
 ```{r}
-topics <- prcomp(articles_w_topics20[,c(15:34)], scale=TRUE)
+topics <- prcomp(articles_w_topics20[,c(14:33)], scale=TRUE)
 round(topics$rotation, 5)
 
 cpve <- 100*cumsum((topics$sdev)^2)/20   
@@ -270,6 +290,7 @@ plot(seq(1:20), cpve, pch=16, ylim=c(0, 100),
      main="Cumulative Proportion of Variance Explained",
      xlab="Number of PC's Used")
 ```
+
 
 Generate a model:
 ```{r}
@@ -301,9 +322,15 @@ plot(subsets.fit$adjr2, xlab="Number of predictors",
      ylab="adjr2", col="green", type="p", pch=16)
 ```
 
+Random Forest
+```{r}
+rf.fit <- randomForest(points ~ log_price + taster_name  + country_trimmed + topic_1 + topic_2 + topic_3 + topic_5 + topic_7 +  topic_8 + topic_10 + topic_11 + topic_14 + topic_15 + topic_17, data=train, mtry=5, ntree=100)
+summary(rf.topics)
+```
+
 final model
 ```{r}
-final.lm <- lm(points ~ log(price) + taster_name  + country_trimmed + topic_1 + topic_2 + topic_3 + topic_5 + topic_7 +  topic_8 + topic_10 + topic_11 + topic_14 + topic_15 + topic_17, data=train)
+final.lm <- lm(points ~ log(price) + taster_name + country_trimmed + topic_1 + topic_2 + topic_3 + topic_5 + topic_7 +  topic_8 + topic_10 + topic_11 + topic_14 + topic_15 + topic_17, data=train)
 
 summary(final.lm)
 
