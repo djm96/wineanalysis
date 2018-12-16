@@ -243,6 +243,22 @@ We then used our LDA model to generate the individual probabilities of each topi
 
 We came up with names for each of the topics. However, it should be noted that these names are our interpretations of the highest ranked culusters of words in each topic - not anything objectivley generated.  
 
+topic 1: toasty, spicy taste 
+topic 2: strong, tart flavor 
+topic 3: soft, fruity flavor 
+topic 4: balance, fruity flavor
+topic 5: blend of grape variety
+topic 6: deep, herb flavors 
+topic 7: complex flavor and after taste
+topic 8: creamy, rich flavor
+topic 9: ripe, fruity flavor
+topic 10: melon, full body taste
+
+topic 11: herbal, earthy taste
+topic 14: berries
+topic 15: good balance of alcoholic and non-alcoholic qualities
+topic 17: interaction of different tastes
+
 
 ```{r}
 #Conduct LDA for given number of topics
@@ -422,19 +438,6 @@ summary(final.lm)
 test_MSE <- mean(((test$points - predict.lm(final.lm, test))^2),na.rm = TRUE)
 test_MSE
 ```
-
-topic 1: toasty, spicy taste (coffee-like)
-topic 2: strong, tart flavor (acidic)
-topic 3: soft, fruity flavor (fruit juice)
-topic 5: blend of grape variety
-topic 7: complex flavor and after taste
-topic 8: creamy, rich taste (vanilla, caramel like)
-topic 10: ripe fruits/full body taste
-topic 11: herbal, earthy taste
-topic 14: berries
-topic 15: good balance of alcoholic and non-alcoholic qualities
-topic 17: interaction of different tastes
-
 
 ```{r}
 terms(ldaOut20_all,15)
