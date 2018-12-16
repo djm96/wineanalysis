@@ -22,7 +22,7 @@ knitr::opts_chunk$set(echo = TRUE,
 if(!require("pacman")) install.packages("pacman")
 
 pacman::p_load(dplyr, ggplot2, glmnet, ggrepel, tm, wordcloud, RTextTools,
-               data.table,psych,topicmodels)
+               data.table,psych,topicmodels,randomForest)
 
 working_directory  <- paste(getwd(), "/wine-reviews", sep="")
 setwd(working_directory)
@@ -360,6 +360,10 @@ articles_w_topics20$vintage_year_cat[articles_w_topics20$vintage_year>=1980&arti
 articles_w_topics20$vintage_year_cat[articles_w_topics20$vintage_year>=1950&articles_w_topics20$vintage_year<=1979] <- "1950-1979"
 ```
 
+```{r}
+articles_w_topics20$log_price <- log(articles_w_topics20$price)
+```
+
 ##Regression
 Now we are ready to to perform regression analysis, however, we will first create a 80:20 training/testing split to validate our model. 
 ```{r}
@@ -371,7 +375,7 @@ train <- articles_w_topics20[sample, ]
 test  <- articles_w_topics20[-sample, ]
 ```
 
-We attempted to use principal component analysis to attempt to reduce the number of topics in order to increase interpretability of our model. However, since the topic models are generated in a way that each topic is maximally independent of each other, this approach is not effective as each principal component explains a small amount of variance in the data.
+We attempted to use principal component analysis to attempt to reduce the number of topics in order to increase interpretability of our model. However, since the topic models are generated in a way that each topic is maximally independent of each other, this approach is not effective as each principal component explains a small amount of variance in the data. The cumulative variance plot below shows this.
 
 ```{r}
 #PCA - not effective because topics are calculated to assume minimum correlation
@@ -386,6 +390,9 @@ plot(seq(1:20), cpve, pch=16, ylim=c(0, 100),
      xlab="Number of PC's Used")
 ```
 
+Much of the motivation for this project came from a desire to better understand what leads to a good wine. Building a model to predict a reviewer's point rating allows us to see what factors contribute to a high scoring wine. Between the original dataset and the addition features we created there are 45 possible predictors for our model (meaning 2^45 possible models). To assess which predictors should be included we conducted backward selection on OLS regression to find the best model at every possible number of predictors (1-45). 
+
+As shown in charts below we used CP and BIC statistics to assess estimates of the testing error at each level. While we did find estimated testing error decreased with every variable added to the model (full 45 predictor model had lowest CP & BIC), the rate of improvement reduced significantly at 15-18 predictors. This can be seen by applying the elbow rule to the CP and BIC plots below.
 
 ```{r}
 #Generate a model:
@@ -418,7 +425,7 @@ plot(subsets.fit$adjr2, xlab="Number of predictors",
      ylab="adjr2", col="green", type="p", pch=16)
 ```
 
-
+We also attempted to use random forest on our model to see if it would improve the performance. However, due to the large size of our model, random forest gave extremely unstable results that were slow to execute. 
 ```{r}
 #Random Forest
 rf.fit <- randomForest(points ~ log_price + taster_name  + country_trimmed + topic_1 + topic_2 + topic_3 + topic_5 + topic_7 +  topic_8 + topic_10 + topic_11 + topic_14 + topic_15 + topic_17, data=train, mtry=5, ntree=100)
