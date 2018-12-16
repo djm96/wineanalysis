@@ -243,29 +243,34 @@ We then used our LDA model to generate the individual probabilities of each topi
 
 We came up with names for each of the topics. However, it should be noted that these names are our interpretations of the highest ranked culusters of words in each topic - not anything objectivley generated.  
 
-topic 1: toasty, spicy taste 
+topic 1: toasty, dry flavor 
 topic 2: strong, tart flavor 
 topic 3: soft, fruity flavor 
 topic 4: balance, fruity flavor
 topic 5: blend of grape variety
-topic 6: deep, herb flavors 
-topic 7: complex flavor and after taste
+topic 6: deep, spicy flavors 
+topic 7: complex flavor and after-taste
 topic 8: creamy, rich flavor
 topic 9: ripe, fruity flavor
-topic 10: melon, full body taste
+topic 10: melon, full body flavor
 
-topic 11: herbal, earthy taste
-topic 14: berries
+topic 11: herbal, earthy flavor
+topic 12: light, citrus flavor
+topic 13: crisp, acidic flavor
+topic 14: differnet blends of berries
 topic 15: good balance of alcoholic and non-alcoholic qualities
-topic 17: interaction of different tastes
-
+topic 16: wine that has not aged completely
+topic 17: flavors that enhance other wine characteristics
+topic 18: chocolate, coffee like flavor
+topic 19: terroir and the fermentation process
+topic 20: wine that tells of the storage process
 
 ```{r}
 #Conduct LDA for given number of topics
 library(topicmodels)
 number_of_topics = 20
 ldaOut20_all <-LDA(dtm_matrix, number_of_topics, method="Gibbs")
-terms(ldaOut,10)
+terms(ldaOut20_all,10)
 ```
 
 
@@ -356,6 +361,7 @@ France: m_topic_3 (soft, fruity flavor)
 Italy: m_topic_6 (spicy, tannic flavor)
 US: m_topic_5 (blend of different grapes variety)
 
+We also assigned 
 ```{r}
 province_topic <- articles_w_topics20 %>% filter(!(country_trimmed %in% "Other")) %>% group_by(province) %>% summarise(m_topic_1 = mean(topic_1), m_topic_2 = mean(topic_2), m_topic_3 = mean(topic_3), m_topic_4 = mean(topic_4), m_topic_5 = mean(topic_5), m_topic_6 = mean(topic_6), m_topic_7 = mean(topic_7), m_topic_8 = mean(topic_8), m_topic_9 = mean(topic_9), m_topic_10 = mean(topic_10), m_topic_11 = mean(topic_11), m_topic_12 = mean(topic_12), m_topic_13 = mean(topic_13), m_topic_14 = mean(topic_14), m_topic_15 = mean(topic_15), m_topic_16 = mean(topic_16), m_topic_17 = mean(topic_17), m_topic_18 = mean(topic_18), m_topic_19 = mean(topic_19), m_topic_20 = mean(topic_20), n_wine = n()) %>% filter(n_wine>1000)
 
@@ -363,8 +369,7 @@ cbind(province_topic,max_prob_topic=
 colnames(province_topic[c(-1,-22,-23)])[max.col(province_topic[c(-1,-22,-23)],ties.method="first")])
 ```
 
-
-
+To perform regression, we will first create a 80:20 training/testing split to validate our final model. 
 ```{r}
 #Now let's create a train test split
 set.seed(42) # Set Seed so that same sample can be reproduced in future also
@@ -374,6 +379,8 @@ train <- articles_w_topics20[sample, ]
 test  <- articles_w_topics20[-sample, ]
 ```
 
+
+We attempted to use principal component analysis to attempt to reduce the number of topics in order to increase interpretability of our model. However, since the topic models are generated in a way that each topic is maximally independent of each other, this approach is not effective as each principal component explains a small amount of variance in the data.
 
 ```{r}
 #PCA - not effective because topics are calculated to assume minimum correlation
@@ -438,10 +445,3 @@ summary(final.lm)
 test_MSE <- mean(((test$points - predict.lm(final.lm, test))^2),na.rm = TRUE)
 test_MSE
 ```
-
-```{r}
-terms(ldaOut20_all,15)
-```
-
-
-
