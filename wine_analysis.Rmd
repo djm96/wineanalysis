@@ -85,9 +85,9 @@ winedata_unique = unique(winedata[,-1])
 ```{r}
 #Take out entries with missing values in important categories:
 winedata_clean <- winedata_unique[!is.na(winedata_unique$price),]
-winedata_clean <- winedata_clean[winedata_unique$country!="",]
-winedata_clean <- winedata_clean[winedata_unique$description!="",]
-winedata_clean.reg <- winedata_clean[winedata_unique$region_1!="",]
+winedata_clean <- winedata_clean[winedata_clean$country!="",]
+winedata_clean <- winedata_clean[winedata_clean$description!="",]
+winedata_clean.reg <- winedata_clean[winedata_clean$region_1!="",]
 ```
 
 
@@ -432,7 +432,6 @@ rf.fit <- randomForest(points ~ log_price + taster_name  + country_trimmed + top
 summary(rf.topics)
 ```
 
-
 ```{r}
 #final model
 final.lm <- lm(points ~ log(price) + taster_name + country_trimmed + topic_1 + topic_2 + topic_3 + topic_5 + topic_7 +  topic_8 + topic_10 + topic_11 + topic_14 + topic_15 + topic_17, data=train)
@@ -442,3 +441,9 @@ summary(final.lm)
 test_MSE <- mean(((test$points - predict.lm(final.lm, test))^2),na.rm = TRUE)
 test_MSE
 ```
+
+Our final model shows us that while there are many attributes to a wine, a few explain most of the variation in point ratings quite well. Our model shows price to be a very strong predictor of points. This has interesting implications since there has been a good deal of controversy around the true impact of price. While it is predictive of points the direction of the effect is unclear. Since these are not blind reviews it is possible higher prices could influence reviewers to give better ratings.
+
+Countries do also have a significant impact on price. The countries that had the most signifiant contributions to the model were France, Italy, and US. With France leading to highest ratings, then Italy, then US - when controlling for all other predictors in the model.
+
+Perhaps most interesting was the findings from our topic modeling. It seems that wines that are described just one or two topics perform poorly, while wines that have attributes of many topics do best. The only topic that improved a wine's predicted points as it rose was Topic 7 "complex flavor and after taste". Both these findings show us that a complex and nuanced taste profile is ideal, while no specific elements of a taste profile are necessarily better than others. However, the data did reflect that wine's described as "ripe" would typically have lower ratings.
