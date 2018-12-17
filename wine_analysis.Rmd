@@ -24,14 +24,14 @@ To achieve these goals, we analyzed a set of 111,538 unique wines reviews by Win
 
 1. points: This is the score Wine Enthusiast rated the wine on a scale of 1-100. According to Wine Enthusiast:  
   
-> Ratings reflect what our editors felt about a particular product. Beyond the rating, we encourage you to read the accompanying tasting note to learn about a product's special characteristics.  
-> Classic 98-100: The pinnacle of quality.  
-> Superb 94-97: A great achievement.  
-> Excellent 90-93: Highly recommended.  
-> Very Good 87-89: Often good value; well recommended.  
-> Good 83-86: Suitable for everyday consumption; often good value.  
-> Acceptable 80-82: Can be employed in casual, less-critical circumstances.  
-> Products deemed Unacceptable (receiving a rating below 80 points) are not reviewed.  
+Ratings reflect what our editors felt about a particular product. Beyond the rating, we encourage you to read the accompanying tasting note to learn about a product's special characteristics.  
+Classic 98-100: The pinnacle of quality.  
+Superb 94-97: A great achievement.  
+Excellent 90-93: Highly recommended.  
+Very Good 87-89: Often good value; well recommended.  
+Good 83-86: Suitable for everyday consumption; often good value.  
+Acceptable 80-82: Can be employed in casual, less-critical circumstances.  
+Products deemed Unacceptable (receiving a rating below 80 points) are not reviewed.  
   
 2. price: The cost for a bottle of the wine in USD
 3. country: The country that the wine is from
@@ -48,7 +48,7 @@ To achieve these goals, we analyzed a set of 111,538 unique wines reviews by Win
 
 According to Wine Enthusiast:  
 
-> All tastings reported in the Buying Guide are performed blind. Typically, products are tasted in peer-group flights of from 5-8 samples. Reviewers may know general information about a flight to provide context-vintage, variety or appellation-but never the producer or retail price of any given selection. When possible, products considered flawed or uncustomary are retasted. (https://253qv1sx4ey389p9wtpp9sj0-wpengine.netdna-ssl.com/wp-content/uploads/2017/09/BG_Info_Panel.pdf)  
+All tastings reported in the Buying Guide are performed blind. Typically, products are tasted in peer-group flights of from 5-8 samples. Reviewers may know general information about a flight to provide context-vintage, variety or appellation-but never the producer or retail price of any given selection. When possible, products considered flawed or uncustomary are retasted. (https://253qv1sx4ey389p9wtpp9sj0-wpengine.netdna-ssl.com/wp-content/uploads/2017/09/BG_Info_Panel.pdf)  
   
 This should minimize many potential sources of bias. However, experts are - by definition - not unbiased estimators of quality. In other words, their scores likely do not reflect the true average score that consumers would give the wine, because their preferences likely differ from that of the average consumer. Based on the existing literature, we expect that this bias is small compared to the test-to-test variance (noise in experts' scores). We hope that the large number of observations in this dataset will produce precise results despite this potentially high variance. Other sources are bias which we know less about are selection bias and survivorship bias. Wine Enthusiast does not rate every wine, or perform statistically rigorous sampling. In fact most of the wines they rate are free samples samples submitted by vineyards. Additionally Wine Enthusiast does not public ratings for wines which scored below 80 points.  
 
@@ -92,7 +92,7 @@ f <- nrow(winedata_clean.reg)
 num_no_reg <- e - f
 ```
 
-```{r}
+```{r,eval=F}
 cleaning_df <- data.frame(list(ayy=c("Original Data", "Duplicates","Missing Price","Missing Country","Clean Data","Missing Region","Clean Data With Region"),
                                obs=c(nrow(winedata),num_dupl,num_no_price,num_no_country,nrow(winedata_clean),num_no_reg,nrow(winedata_clean.reg))))
 
@@ -129,7 +129,7 @@ Price and Score are arguably the two most important variables in this dataset. T
 Wine price and points are somewhat correlated, with about 0.417 correlation coefficient. Wine Enthusiast claims to taste without prior knowledge of a wine's price. Therefore this might be evidence that it costs more to produce more expensive wine, or that producers can charge higher prices for better quality wine.  
 
 
-```{r}
+```{r,eval=F}
 tasters_df <- winedata_clean %>% filter(taster_name!="") %>% group_by(taster_name) %>% summarise(num_wine_tasted=n()) %>% arrange(desc(num_wine_tasted))
 
 tasters_df <- plyr::rename(tasters_df, c(taster_name="Taster Name", num_wine_tasted="Number of Wines Tasted"))
@@ -147,11 +147,10 @@ country_dat_round <- country_dat
 country_dat_round$median_points <- round(country_dat_round$median_points, 1)
 country_dat_round$median_price <- round(country_dat_round$median_price, 1)
 country_dat_round <- plyr::rename(country_dat_round, c(country="Country", median_points="Median Score", median_price="Median Price (USD)", n_wines_produced="Wine Rating Count"))
-
+```
+```{r,eval=F}
 kable(country_dat_round[1:10,], caption = "Top 10 Countries by Number of Wine Ratings") %>%
   kable_styling(bootstrap_options = c("striped", "hover"))
-```
-```{r,include=F}
 median(winedata_clean$price)
 median(winedata_clean$points)
 ```
@@ -181,12 +180,11 @@ variet_dat <- winedata_clean %>% group_by(variety) %>% summarize(median_points=m
 
 variet_dat2 <- plyr::rename(variet_dat, c(variety="Variety", median_points="Median Score", median_price="Median Price (USD)", n_wines_produced="Wine Rating Count"))
 variet_dat2 <- variet_dat2[1:10,]
-
-kable(variet_dat2, caption = "Top 10 Varieties by Number of Wine Ratings") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
 ```
 
-```{r, include=F}
+```{r, eval=F}
+kable(variet_dat2, caption = "Top 10 Varieties by Number of Wine Ratings") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
 nrow(variet_dat)
 sum(variet_dat[1:10,]$n_wines_produced) / nrow(winedata_clean)
 ```
