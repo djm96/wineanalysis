@@ -7,13 +7,16 @@ author:
 - Jon Edson
 output:
   word_document: default
-  html_notebook: default
+  html_document:
+    keep_md: yes
+    self_contained: no
 ---
 
 ```{r}
 knitr::opts_chunk$set(echo = FALSE, 
                       tidy = TRUE, fig.width = 7, fig.height = 4,
-                      fig.align='left', dev = 'pdf')
+                      fig.align='left', dev = 'pdf',
+                      always_allow_html=FALSE)
 if(!require("pacman")) install.packages("pacman")
 
 pacman::p_load(dplyr, ggplot2, glmnet, ggrepel, tm, wordcloud, RTextTools,
