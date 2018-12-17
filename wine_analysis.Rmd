@@ -425,7 +425,10 @@ plot(subsets.fit$adjr2, xlab="Number of predictors",
      ylab="adjr2", col="green", type="p", pch=16)
 ```
 
-We also attempted to use random forest on our model to see if it would improve the performance. However, due to the large size of our model, random forest gave extremely unstable results that were slow to execute. 
+We also attempted to use random forest on our model to see if it would improve the performance. However, due to the large size of our model, random forest gave extremely unstable results that were slow to execute. Thus, we will keep using the linear model derived from best subsets selection. The formula is the following: 
+points ~ log(price) + taster_name + country_trimmed + topic_1 + topic_2 + topic_3 + topic_5 + topic_7 +  topic_8 + topic_10 + topic_11 + topic_14 + topic_15 + topic_17. 
+
+We obtained an adjusted R Squared of 0.515 from the training model. By validating this model with the testing data we obtained a test mean squared error of 4.57 and a residual standard error of 2.16, which means our model is significantly more accurate compared to a random guess in the range of scores. 
 ```{r}
 #Random Forest
 rf.fit <- randomForest(points ~ log_price + taster_name  + country_trimmed + topic_1 + topic_2 + topic_3 + topic_5 + topic_7 +  topic_8 + topic_10 + topic_11 + topic_14 + topic_15 + topic_17, data=train, mtry=5, ntree=100)
