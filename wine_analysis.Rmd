@@ -6,8 +6,8 @@ author:
 - George Poon
 - Jon Edson
 output:
-  html_document: default
   word_document: default
+  html_document: default
 ---
 ##Executive Summary
 ###Background
@@ -117,6 +117,7 @@ ggplot(data=winedata_clean[winedata_clean$price < 200, ], aes(winedata_clean$pri
   labs(title="Truncated Histogram of Price") +
   labs(x="Price (USD)", y="Count")
 ```
+
 ```{r,echo=F}
 ggplot(data=winedata_clean, aes(winedata_clean$points)) + 
   geom_histogram(bins = 20) + 
