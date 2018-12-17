@@ -6,26 +6,9 @@ author:
 - George Poon
 - Jon Edson
 output:
+  html_document: default
   word_document: default
-  html_document:
-    keep_md: yes
-    self_contained: no
 ---
-
-```{r}
-knitr::opts_chunk$set(echo = FALSE, 
-                      tidy = TRUE, fig.width = 7, fig.height = 4,
-                      fig.align='left', dev = 'pdf',
-                      always_allow_html=FALSE)
-if(!require("pacman")) install.packages("pacman")
-
-pacman::p_load(dplyr, ggplot2, glmnet, ggrepel, tm, wordcloud, RTextTools,
-               data.table,psych,topicmodels,randomForest,leaps)
-
-setwd("C:/Users/george/Desktop/STAT 471/project")
-wine.dat <- read.csv("winemag-data-130k-v2.csv", encoding="UTF-8",stringsAsFactors=FALSE)
-```
-
 ##Executive Summary
 ###Background
 The 100-point wine scoring system has become the de facto benchmark of quality in the wine industry. Since Robert Parker begain releasing these scores in the 70s, most other major wine publications (including Wine Spectator, Wine Enthusiast, and International Wine Cellar) have begun rating wines on this scale. The reason for its widespread adoption is clear: consumers need genuine signals of quality in order to make informed purchasing decisions. Such a signal is made even more valuable by the fact that wine quality is dependent on a high number of variables. It can be very difficult for consumers to differentiate between the myriad combination varieties, vineyards, and vintages. Consequently, expert wine scores have become popular tools in many areas of the industry. They are strategically used by online and brick and mortar wine stores to sell their stock, and by vineyards to help push their wines downstream.  
@@ -73,16 +56,15 @@ Interestingly, these variables constitute most of the information that an indivi
 
 ```{r, include=FALSE}
 rm(list=ls())
-knitr::opts_chunk$set(echo = TRUE, 
-                      tidy = TRUE, fig.width = 7, fig.height = 4,
-                      fig.align='left', dev = 'pdf')
+knitr::opts_chunk$set(echo = FALSE, 
+                      tidy = TRUE, 
+                      message=FALSE, fig.width = 7, fig.height = 4,
+                      fig.align='left', dev = 'pdf',
+                      always_allow_html=FALSE)
 if(!require("pacman")) install.packages("pacman")
 
-pacman::p_load(dplyr, ggplot2, glmnet, ggrepel, tm, wordcloud, RTextTools,
-               data.table,psych,topicmodels,kableExtra)
+pacman::p_load(dplyr, ggplot2, glmnet, ggrepel, tm, knitr, kableExtra, wordcloud, RTextTools, data.table,psych,topicmodels,randomForest,leaps)
 
-working_directory  <- paste(getwd(), "/wine-reviews", sep="")
-setwd(working_directory)
 winedata <- read.csv("winemag-data-130k-v2.csv", encoding="UTF-8",stringsAsFactors=FALSE)
 ```
 
@@ -110,7 +92,7 @@ f <- nrow(winedata_clean.reg)
 num_no_reg <- e - f
 ```
 
-```{r,echo=F}
+```{r}
 cleaning_df <- data.frame(list(ayy=c("Original Data", "Duplicates","Missing Price","Missing Country","Clean Data","Missing Region","Clean Data With Region"),
                                obs=c(nrow(winedata),num_dupl,num_no_price,num_no_country,nrow(winedata_clean),num_no_reg,nrow(winedata_clean.reg))))
 
@@ -146,7 +128,7 @@ Price and Score are arguably the two most important variables in this dataset. T
 Wine price and points are somewhat correlated, with about 0.417 correlation coefficient. Wine Enthusiast claims to taste without prior knowledge of a wine's price. Therefore this might be evidence that it costs more to produce more expensive wine, or that producers can charge higher prices for better quality wine.  
 
 
-```{r,echo=F}
+```{r}
 tasters_df <- winedata_clean %>% filter(taster_name!="") %>% group_by(taster_name) %>% summarise(num_wine_tasted=n()) %>% arrange(desc(num_wine_tasted))
 
 tasters_df <- plyr::rename(tasters_df, c(taster_name="Taster Name", num_wine_tasted="Number of Wines Tasted"))
@@ -309,29 +291,31 @@ winedata_subset = winedata_clean
 dtm_ready_df = winedata_subset[ ,c(1, 2)]
 ```
 
-```{r}
+```{r,eval=F}
 #Okay, let's create a corpus, clean it, and create a DTM!
 
-# corp.original <- VCorpus(VectorSource(dtm_ready_df$description))
-# corp = tm_map(corp.original, removePunctuation) 
-# corp = tm_map(corp, removeNumbers) 
-# corp = tm_map(corp, content_transformer(tolower) ,lazy=TRUE) 
-# corp = tm_map(corp, content_transformer(removeWords), c("like") ,lazy=TRUE)
-# corp = tm_map(corp, content_transformer(removeWords), stopwords("english"))
-# corp = tm_map(corp, content_transformer(stemDocument) ,lazy=TRUE) 
-# corp = tm_map(corp, stripWhitespace)
-# 
-# # Convert to document term matrix
-# dtm <- DocumentTermMatrix(corp)
-# # Reduce matrix sparsity to better deal with LDA later on
-# dtms = removeSparseTerms(dtm, .995)
-# dtm_matrix = as.matrix(dtms)
+corp.original <- VCorpus(VectorSource(dtm_ready_df$description))
+corp = tm_map(corp.original, removePunctuation)
+corp = tm_map(corp, removeNumbers)
+corp = tm_map(corp, content_transformer(tolower) ,lazy=TRUE)
+corp = tm_map(corp, content_transformer(removeWords), c("like") ,lazy=TRUE)
+corp = tm_map(corp, content_transformer(removeWords), stopwords("english"))
+corp = tm_map(corp, content_transformer(stemDocument) ,lazy=TRUE)
+corp = tm_map(corp, stripWhitespace)
+
+# Convert to document term matrix
+dtm <- DocumentTermMatrix(corp)
+# Reduce matrix sparsity to better deal with LDA later on
+dtms = removeSparseTerms(dtm, .995)
+dtm_matrix = as.matrix(dtms)
 ```
 
-```{r}
+```{r,eval=F}
 #Remove wines that have no description from DTM to avoid LDA errors
-# rowTotals <- apply(dtm_matrix , 1, sum) #Find the sum of words in each Document
-# dtm_matrix   <- dtm_matrix[rowTotals> 0, ]           #remove all docs without words
+rowTotals <- apply(dtm_matrix , 1, sum) 
+#Find the sum of words in each Document
+dtm_matrix   <- dtm_matrix[rowTotals> 0, ]
+#remove all docs without words
 ```
 
 We then used our LDA model to generate the individual probabilities of each topic for each description. This effectively gave us a probability loading on each of the 20 topics, for each wine. We explored using either all 20 probability loadings or classifying each wine to the highest ranked topic. We found that when predicting for points the 20 topics probabilities resulting in a significantly lower testing error than taking the highest rank topic. Intuitively this makes sense, since wines can have complex taste profiles and may often fall into multiple topics, instead of into one cleanly.
@@ -365,46 +349,47 @@ topic 20: wine that tells of the storage process
 
 # number_of_topics = 20
 # ldaOut20_all <-LDA(dtm_matrix, number_of_topics, method="Gibbs")
+
 load("C:/Users/george/Desktop/STAT 471/project/lda_20_image4.RData")
 terms(ldaOut20_all,10)
 ```
 
 We also assigned the highest ranked topic for each wine, and for each of the top three wine producing countries - USA, France and Italy as well as for each of the province that produced over 1000 wines for each country. At a glance our topic modeling matches the expert concensus for each geogrpahical region. American wines, especially those from California, are known for  the creative blends of different grapes variety to achieve the best taste (topic 5). Frenech wines are known for their soft fruity flavors which reflect the terroir of the regions. On the other hand, Italian wines are often more spicy and tannic, making them deesirable for accompanying desserts. 
 
-```{r}
+```{r,eval=F}
 #The following chunk will generate the topic probilities for each document:
-# dic = Terms(dtms)
-# 
-# # Specify this dictionary when creating the dtm for the new articles, which will limit the dtm it creates to only the words that also appeared in the archive. In the example below, 'ldaOut' would be the name assigned to the topic model we created in Step earlier.
-# 
-# new_dtm = DocumentTermMatrix(corp, control=list(dictionary = dic))
-# new_dtm = new_dtm[rowSums(as.matrix(new_dtm))!=0,]
-# topic_probabilities20 = posterior(ldaOut20_all, new_dtm)
+dic = Terms(dtms)
+
+# Specify this dictionary when creating the dtm for the new articles, which will limit the dtm it creates to only the words that also appeared in the archive. In the example below, 'ldaOut' would be the name assigned to the topic model we created in Step earlier.
+
+new_dtm = DocumentTermMatrix(corp, control=list(dictionary = dic))
+new_dtm = new_dtm[rowSums(as.matrix(new_dtm))!=0,]
+topic_probabilities20 = posterior(ldaOut20_all, new_dtm)
 ```
 
-```{r}
+```{r,eval=F}
 #Run this chunk to generate a dataframe that gives the highest ranked topic for each wine.
 
-# articles_w_topics20 = as.data.frame(cbind(winedata_clean[rowTotals> 0, ], max.col(topic_probabilities20$topics)))
+articles_w_topics20 = as.data.frame(cbind(winedata_clean[rowTotals> 0, ], max.col(topic_probabilities20$topics)))
 
 # # Rename a column in R
 
-# colnames(articles_w_topics20)[colnames(articles_w_topics20)=="max.col(topic_probabilities20$topics)"] <- "topic"
-# articles_w_topics20$topic = as.factor(articles_w_topics20$topic)
+colnames(articles_w_topics20)[colnames(articles_w_topics20)=="max.col(topic_probabilities20$topics)"] <- "topic"
+articles_w_topics20$topic = as.factor(articles_w_topics20$topic)
 ```
 
-```{r}
+```{r,eval=F}
 #Run this chunk to generate a dataframe that gives the probabilities of each topic for each wine.
 
-# articles_w_topics20 = as.data.frame(cbind(winedata_clean[rowTotals> 0, ], (topic_probabilities20$topics)))
+articles_w_topics20 = as.data.frame(cbind(winedata_clean[rowTotals> 0, ], (topic_probabilities20$topics)))
 ```
 
-```{r}
+```{r,eval=F}
 #Rename columns from topic numbers to topic_n naming convention. Example: from `1` to `topic_1`.
 
-# for (i in 1:20){
-#   colnames(articles_w_topics20)[colnames(articles_w_topics20)==i] <- paste("topic_", i, sep="")
-# }
+ for (i in 1:20){
+   colnames(articles_w_topics20)[colnames(articles_w_topics20)==i] <- paste("topic_", i, sep="")
+ }
 ```
 
 ```{r}
