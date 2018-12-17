@@ -1,22 +1,17 @@
 ---
-title: "Wine Analysis"
+title: 'STAT 471 Final Project: Predicting Wine Points using Taste Description and
+  Text Analysis'
 author:
 - Duncan McCrae
 - George Poon
 - Jon Edson
-output: html_notebook
+output:
+  word_document: default
+  html_notebook: default
 ---
 
-##Executive Summary
-###Background
-The 100-point wine scoring system has become the de facto benchmark of quality in the wine industry. Since Robert Parker begain releasing these scores in the 70s, the major wine publications in the world (including Wine Spectator, Wine Enthusiast, and International Wine Cellar) have all begun rating wines on this scale. However the even the administrators of these very publications have major reservations about this rating system. Additionally many wine publications have conflicts of interest (because they receive advertising revenue and free samples from vineyards, or because they sell wine in addition to rating it) (https://www.nytimes.com/2006/08/13/business/yourmoney/13rate.html). Some argue that critics' scores are more a reflection of their preferences that the absolute quality of the wine, which might homogenize the industry as producers choose styles of wines that tend to score better (https://www.nytimes.com/2006/08/13/business/yourmoney/13rate.html). Finally there are the much larger questions of whether experts can reliably distinguish between good and bad wine, and whether their preferences line up with those of non-experts. Numerous studies have attempted to answer these questions and have cast doubt on expert wine scores altogether (http://ageconsearch.umn.edu/record/37328/files/AAWE_WP16.pdf, http://www.daysyn.com/Morrot.pdf, https://www.theguardian.com/science/2011/apr/14/expensive-wine-cheap-plonk-taste, https://www.theguardian.com/lifeandstyle/2013/jun/23/wine-tasting-junk-science-analysis, https://www.pnas.org/content/105/3/1050.full, https://ideas.repec.org/p/hhs/hastef/0700.html). 
-
-##Goal of the Study
-The goal of this study is the answer the question: What do these expert wine scores reflect, if not the underlying quality of the wine? As we explain in the conclusions, it would be interesting to explore the relationship between the objective characteristics of wine (i.e. chemical makeup) and expert scores, but this data is not availiable at this time. 
-
-```{r, include=FALSE}
-rm(list=ls())
-knitr::opts_chunk$set(echo = TRUE, 
+```{r}
+knitr::opts_chunk$set(echo = FALSE, 
                       tidy = TRUE, fig.width = 7, fig.height = 4,
                       fig.align='left', dev = 'pdf')
 if(!require("pacman")) install.packages("pacman")
@@ -24,20 +19,22 @@ if(!require("pacman")) install.packages("pacman")
 pacman::p_load(dplyr, ggplot2, glmnet, ggrepel, tm, wordcloud, RTextTools,
                data.table,psych,topicmodels,randomForest)
 
-working_directory  <- paste(getwd(), "/wine-reviews", sep="")
-setwd(working_directory)
+setwd("C:/Users/george/Desktop/STAT 471/project")
 wine.dat <- read.csv("winemag-data-130k-v2.csv", encoding="UTF-8",stringsAsFactors=FALSE)
 ```
 
-```{r}
-library(tidyr)
-winedata <- read.csv("~/Documents/senior_year/stat471/final_project/wine-reviews/winemag-data-130k-v2.csv")
-```
+##Executive Summary
+###Background
+The 100-point wine scoring system has become the de facto benchmark of quality in the wine industry. Since Robert Parker begain releasing these scores in the 70s, most other major wine publications (including Wine Spectator, Wine Enthusiast, and International Wine Cellar) have begun rating wines on this scale. The reason for its widespread adoption is clear: consumers need genuine signals of quality in order to make informed purchasing decisions. Such a signal is made even more valuable by the fact that wine quality is dependent on a high number of variables. It can be very difficult for consumers to differentiate between the myriad combination varieties, vineyards, and vintages. Consequently, expert wine scores have become popular tools in many areas of the industry. They are strategically used by online and brick and mortar wine stores to sell their stock, and by vineyards to help push their wines downstream.  
+
+However many - including the administrators of these publications - have reservations about this rating system. Many wine-rating publications have conflicts of interest (because they receive advertising revenue and free samples from vineyards, or because they sell wine in addition to rating it) (https://www.nytimes.com/2006/08/13/business/yourmoney/13rate.html). Some argue that critics' scores are more a reflection of their preferences that the absolute quality of the wine, which might homogenize the industry as producers choose styles of wines that tend to score better (https://www.nytimes.com/2006/08/13/business/yourmoney/13rate.html). Finally there is an increasing body of literature that suggests that experts cannot reliably distinguish between high and low quality wine, and that their preferences do not line up with those of non-experts (http://ageconsearch.umn.edu/record/37328/files/AAWE_WP16.pdf, http://www.daysyn.com/Morrot.pdf, https://www.theguardian.com/science/2011/apr/14/expensive-wine-cheap-plonk-taste, https://www.theguardian.com/lifeandstyle/2013/jun/23/wine-tasting-junk-science-analysis, https://www.pnas.org/content/105/3/1050.full, https://ideas.repec.org/p/hhs/hastef/0700.html). 
+
+##Goal of the Study
+The goal of this study is the answer the question: What do these expert wine scores reflect, if not the underlying quality of the wine? As we discuss further in the conclusions, it would be interesting to explore the relationship between the objective characteristics of wine (i.e. chemical makeup) and expert scores, but this data is not availiable at this time. 
 
 ##Data
-Wine is stable of modern fine dining culture and often the ones that reflect their origin or terroir garner the most praise from critics. It would be rather useful to be able to predict the variety, winery and location of wine based on description from the ciritics. This dataset is sraped from WineEnthusiast.com during the week of June 15th, 2017. Only wines with scores over 80 are kept in the dataset with nearly 13000 initial observations. 
-
-To achieve these goals, we analyzed a set of 100k (CHECK THIS) unique wines from Wine Enthusiast (https://www.winemag.com/), one of the largest wine-rating publications in the world. For each of these observations, we had access to the following variables:  
+###Data Summary
+To achieve these goals, we analyzed a set of 111,538 unique wines reviews by Wine Enthusiast (https://www.winemag.com/), one of the largest wine-rating publications in the world. For each of these observations, this dataset provided to the following variables:  
 
 1. points: This is the score Wine Enthusiast rated the wine on a scale of 1-100. According to Wine Enthusiast:  
   
@@ -63,83 +60,180 @@ To achieve these goals, we analyzed a set of 100k (CHECK THIS) unique wines from
 12. variety: The type of grapes used to make the wine (ie Pinot Noir)
 13. winery: The winery that made the wine  
 
-Luckily, we expect these variables to be almost entirely free of bias, with the important exception of points. According to Wine Enthusiast:
-> All tastings reported in the Buying Guide are performed blind. Typically, products are tasted in peer-group flights of from 5-8 samples. Reviewers may know general information about a flight to provide context-vintage, variety or appellation-but never the producer or retail price of any given selection. When possible, products considered flawed or uncustomary are retasted. (https://253qv1sx4ey389p9wtpp9sj0-wpengine.netdna-ssl.com/wp-content/uploads/2017/09/BG_Info_Panel.pdf) 
+According to Wine Enthusiast:  
 
-These variables constitute almost all of the information that an individual might use to make a purchasing decision about a wine that they had never tried.  However we are missing a few variables that might predict how 
+> All tastings reported in the Buying Guide are performed blind. Typically, products are tasted in peer-group flights of from 5-8 samples. Reviewers may know general information about a flight to provide context-vintage, variety or appellation-but never the producer or retail price of any given selection. When possible, products considered flawed or uncustomary are retasted. (https://253qv1sx4ey389p9wtpp9sj0-wpengine.netdna-ssl.com/wp-content/uploads/2017/09/BG_Info_Panel.pdf)  
+  
+This should minimize many potential sources of bias. However, experts are - by definition - not unbiased estimators of quality. In other words, their scores likely do not reflect the true average score that consumers would give the wine, because their preferences likely differ from that of the average consumer. Based on the existing literature, we expect that this bias is small compared to the test-to-test variance (noise in experts' scores). We hope that the large number of observations in this dataset will produce precise results despite this potentially high variance. Other sources are bias which we know less about are selection bias and survivorship bias. Wine Enthusiast does not rate every wine, or perform statistically rigorous sampling. In fact most of the wines they rate are free samples samples submitted by vineyards. Additionally Wine Enthusiast does not public ratings for wines which scored below 80 points.  
 
+Interestingly, these variables constitute most of the information that an individual might use to make a purchasing decision about a wine that they had never tried.  However we are missing a few variables that previous literature has found to predict quality: color, etc.
 
-```{r}
-summary(winedata)
-names(winedata)
+```{r, include=FALSE}
+rm(list=ls())
+knitr::opts_chunk$set(echo = TRUE, 
+                      tidy = TRUE, fig.width = 7, fig.height = 4,
+                      fig.align='left', dev = 'pdf')
+if(!require("pacman")) install.packages("pacman")
+
+pacman::p_load(dplyr, ggplot2, glmnet, ggrepel, tm, wordcloud, RTextTools,
+               data.table,psych,topicmodels,kableExtra)
+
+working_directory  <- paste(getwd(), "/wine-reviews", sep="")
+setwd(working_directory)
+winedata <- read.csv("winemag-data-130k-v2.csv", encoding="UTF-8",stringsAsFactors=FALSE)
 ```
 
 
-```{r}
+###Data Cleaning
+```{r,echo=F}
 #remove duplicated rows:
-winedata <- winedata[,-c(1,9)]
-winedata_unique = unique(winedata[,-1])
-```
-
-
-```{r}
+winedata2 <- winedata[,-c(1,9)]
+a <- nrow(winedata2)
+winedata_unique = unique(winedata2)
+b <- nrow(winedata_unique)
+num_dupl <- a - b
 #Take out entries with missing values in important categories:
 winedata_clean <- winedata_unique[!is.na(winedata_unique$price),]
+c <- nrow(winedata_clean)
+num_no_price <- b - c 
 winedata_clean <- winedata_clean[winedata_clean$country!="",]
+d <- nrow(winedata_clean)
+num_no_country <- c - d
 winedata_clean <- winedata_clean[winedata_clean$description!="",]
+e <- nrow(winedata_clean)
+num_no_desc <- d - e
 winedata_clean.reg <- winedata_clean[winedata_clean$region_1!="",]
+f <- nrow(winedata_clean.reg)
+num_no_reg <- e - f
 ```
-
-
-##Data Cleaning/Summary
-```{r,echo=F}
-#price and Not very correlated
-cor(winedata_clean$points,winedata_clean$price)
-multi.hist(winedata_clean[,sapply(winedata_clean, is.numeric)])
-```
-
-First we removed the numerative column for repetitiveness, then region_2 was removed as well because of the excess amount of NA and specificity. We also removed observations with NAs in price and country because those are likely to be important predictors of sentiment. We then created a separate dataset with NAs from region_1 removed since some countries are simply to small to have regional specificity so we don't want to pollute the data. 
-
-Wine price and points are somewhat correlated, with about 0.416 correlation coefficient. This makes sense because tasters generally try to avoid a priori knowledge about wine characteristics before tasting in order to be objective. However, the amount of effort that went into more expensively priced wine would reflect somewhat in the quality. 
-
-Looking at the histograms of points and prices we can observe their distributional differences. While points are distributred relatively normally, prices are right-skewed with a few extremely expensive wines. 
 
 ```{r,echo=F}
-winedata_clean %>% filter(taster_name!="") %>% group_by(taster_name) %>% summarise(num_wine_tasted=n()) %>% arrange(desc(num_wine_tasted))
-```
+cleaning_df <- data.frame(list(ayy=c("Original Data", "Duplicates","Missing Price","Missing Country","Clean Data","Missing Region","Clean Data With Region"),
+                               obs=c(nrow(winedata),num_dupl,num_no_price,num_no_country,nrow(winedata_clean),num_no_reg,nrow(winedata_clean.reg))))
 
-There are a total of 19 wine tasters that contribute to this datasets. Most of them are rather prolific and cover thousands of wine. The most prolific of which is Roger Voss who is an editor for WineEnthusiast and covers most of France. 
+cleaning_df <- plyr::rename(cleaning_df, c(ayy="", obs="Observations Count"))
+
+kable(cleaning_df) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = F, position = "left")
+```
+The original data required some cleaning to prepare it for analysis. One variable was simply unique row identifiers and thus was dropped. The information from region_2 is largely captured in region_1 variable, so it was dropped removed as well because of the excess amount of NA and specificity. We also removed observations with NAs in price and country because those are likely to be important predictors of sentiment. We also created a separate dataset composed of the observations with NA's from region_1 removed since some countries are simply to small to have regional specificity so we don't want to pollute the data. All of these operations may have introduced bias, and using a more sophisticated technique for dealing with this missing values is be an imporant next step for this analysis. The original data included 129,971, and - after performing the above operations - we were left with a clean set of 111,538 observations (93,580 with region data). 
+
+###Exploratory Data Analysis
+```{r,echo=F}
+ggplot(data=winedata_clean, aes(winedata_clean$price)) + 
+  geom_histogram(bins = 40) + 
+  labs(title="Histogram of Price") +
+  labs(x="Price (USD)", y="Count")
+```
 
 ```{r,echo=F}
-winedata_clean %>% group_by(country) %>% summarize(mean_points=mean(points),mean_price=mean(price),n_wines_produced=n()) %>%
-  arrange(desc(n_wines_produced,mean_points,mean_price))
+ggplot(data=winedata_clean[winedata_clean$price < 200, ], aes(winedata_clean$price[winedata_clean$price < 200])) + 
+  geom_histogram(bins = 20) + 
+  labs(title="Truncated Histogram of Price") +
+  labs(x="Price (USD)", y="Count")
 ```
-
-```{r}
-winedata_clean %>% group_by(province) %>% summarize(mean_points=mean(points),mean_price=mean(price),n_wines_produced=n()) %>%
-  arrange(desc(n_wines_produced,mean_points,mean_price)) %>%
-    mutate(country=winedata_clean[match(province,winedata_clean$province),1]) %>% filter(country %in% c("US","France","Italy","Spain","Portugal"),
-                                                                                         n_wines_produced > 1000)
+```{r,echo=F}
+ggplot(data=winedata_clean, aes(winedata_clean$points)) + 
+  geom_histogram(bins = 20) + 
+  labs(title="Histogram of Score") +
+  labs(x="Score", y="Count")
 ```
+Price and Score are arguably the two most important variables in this dataset. Together they represent to value (quality per dollar) of a wine. There are noticeable differences between the distribution of score and price. While scores are distributred relatively normally (with the exception of a peak at 89), prices are right-skewed with a very long tail (the most expensive wine in this dataset is $3300).  
 
-While mean points and mean price on a country level can tell us in some ways the general wine quality in a given country. These qualities should be taken with reservations since the countries like US and France dominate the market in terms of number of wines produced which would dilute the mean. This also implies that country would not be a good variable to predict because of the variation of wine quality across the aforementioned powerhouses of wine production. 
-
-```{r}
-winedata_clean %>% group_by(variety) %>% summarize(mean_points=mean(points),mean_price=mean(price),n_wines_produced=n()) %>%
-  arrange(desc(n_wines_produced,mean_points,mean_price))
-```
+Wine price and points are somewhat correlated, with about 0.417 correlation coefficient. Wine Enthusiast claims to taste without prior knowledge of a wine's price. Therefore this might be evidence that it costs more to produce more expensive wine, or that producers can charge higher prices for better quality wine.  
 
 
 ```{r,echo=F}
-province_dat <- winedata_clean %>% group_by(province) %>% summarize(mean_points=mean(points),mean_price=mean(price)) %>%
+tasters_df <- winedata_clean %>% filter(taster_name!="") %>% group_by(taster_name) %>% summarise(num_wine_tasted=n()) %>% arrange(desc(num_wine_tasted))
+
+tasters_df <- plyr::rename(tasters_df, c(taster_name="Taster Name", num_wine_tasted="Number of Wines Tasted"))
+
+kable(tasters_df[1:10,], caption = "Top 10 Most Prolific Tasters") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = F, position = "left")
+```
+A total of 19 wine tasters contributed to this dataset. Most of them are rather prolific and cover thousands of wine. The most prolific is Roger Voss, the European editor of Wine Enthusiast, who covers Bordeaux, Burgundy, Champagne, the Loire and South-West France as well as Portugal.  
+
+```{r,echo=F}
+country_dat <- winedata_clean %>% group_by(country) %>% summarize(median_points=median(points),median_price=median(price),n_wines_produced=n()) %>%
+  arrange(desc(n_wines_produced,median_points,median_price))
+
+country_dat_round <- country_dat
+country_dat_round$median_points <- round(country_dat_round$median_points, 1)
+country_dat_round$median_price <- round(country_dat_round$median_price, 1)
+country_dat_round <- plyr::rename(country_dat_round, c(country="Country", median_points="Median Score", median_price="Median Price (USD)", n_wines_produced="Wine Rating Count"))
+
+kable(country_dat_round[1:10,], caption = "Top 10 Countries by Number of Wine Ratings") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+```{r,include=F}
+median(winedata_clean$price)
+median(winedata_clean$points)
+```
+We use the median to summarize the score and price at the country level, because the prices are so skewed. The median price of all wines is $25, and the median score is 88 points. The US is very well represented in this dataset, with its wines composing almost half of all reviews (more than the next 6 most represented countried combined). While median score and price at the country level provide some information about the quality and expense of wine, we need to look at the distributions of these variables to see what is really happening. 
+
+
+```{r,echo=F}
+top10_count <- country_dat_round[1:10,]$Country
+winedata_top10_count <- winedata_clean[winedata_clean$country %in% top10_count, ] # only include countries which are in top 10 for reviews
+
+ggplot(winedata_top10_count, aes(winedata_top10_count$country, winedata_top10_count$price)) + geom_boxplot() + 
+  coord_cartesian(ylim = c(0, 100)) + 
+  labs(title="Distribution of Price by Country (10 Most Represented Countries)") +
+  labs(x="Country", y="Price")
+```
+
+```{r,echo=F}
+ggplot(winedata_top10_count, aes(winedata_top10_count$country, winedata_top10_count$points)) + geom_boxplot() + 
+  labs(title="Distribution of Score by Country (10 Most Represented Countries)") +
+  labs(x="Country", y="Score")
+```
+From these plots, we find that - even at the country level - there are significant differences in prices and scores. Wine grapes are difficult to grow, with certain varieties requiring very specific climates. Thus, we would expect there to be significant differences to the degree that different countries have different climates.  
+
+```{r,echo=F}
+variet_dat <- winedata_clean %>% group_by(variety) %>% summarize(median_points=median(points),median_price=median(price),n_wines_produced=n()) %>%
+  arrange(desc(n_wines_produced,median_points,median_price))
+
+variet_dat2 <- plyr::rename(variet_dat, c(variety="Variety", median_points="Median Score", median_price="Median Price (USD)", n_wines_produced="Wine Rating Count"))
+variet_dat2 <- variet_dat2[1:10,]
+
+kable(variet_dat2, caption = "Top 10 Varieties by Number of Wine Ratings") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+```{r, include=F}
+nrow(variet_dat)
+sum(variet_dat[1:10,]$n_wines_produced) / nrow(winedata_clean)
+```
+Though 692 unqiue varieties are represented in this dataset, the top 10 most represented varieties constitute 56% of the total reviews. Here we can also see that the median price varies quite a lot between varieties. It is possible that this is due to costs of productions differing, or due to certain varieties being more demanded.  
+
+```{r,echo=F}
+top10_variet <- variet_dat[1:10,]$variety
+winedata_top10_variet <- winedata_clean[winedata_clean$variety %in% top10_variet, ] # only include varieties which are in top 10 for reviews
+
+ggplot(winedata_top10_variet, aes(winedata_top10_variet$variety, winedata_top10_variet$price)) + geom_boxplot() +
+  coord_cartesian(ylim = c(0, 100)) + 
+  labs(title="Distribution of Score by Price (10 Most Represented Varieties)") +
+  labs(x="Variety", y="Price")
+```
+Interestingly, both the median and interquartile range of price varies much more between varieties than score.
+
+```{r,echo=F}
+ggplot(winedata_top10_variet, aes(winedata_top10_variet$variety, winedata_top10_variet$points)) + geom_boxplot() + 
+  labs(title="Distribution of Score by Variety (10 Most Represented Varieties)") +
+  labs(x="Variety", y="Score")
+```
+Though the interquartile ranges are similar, the median scores are quite different for some of these wines. This could be a result of tasters' personal preferences, or there could be many other reasons why certain varieties would tend to be better quality. We just don't have enough information here to say. 
+
+```{r,echo=F}
+province_dat <- winedata_clean.reg %>% group_by(province) %>% summarize(mean_points=median(points),mean_price=median(price)) %>%
   arrange(desc(mean_points,mean_price)) %>% 
-  mutate(country=winedata_clean[match(province,winedata_clean$province),1],
+  mutate(country=winedata_clean.reg[match(province,winedata_clean.reg$province),1],
          prov_country=paste(province,",",country))
 
-province_100_dat <- winedata_clean %>% group_by(province) %>% summarize(mean_points=mean(points),mean_price=mean(price), n_wine=n()) %>%
+province_100_dat <- winedata_clean.reg %>% group_by(province) %>% summarize(mean_points=median(points),mean_price=median(price), n_wine=n()) %>%
   filter(n_wine>=100) %>%
   arrange(desc(mean_points,mean_price)) %>% 
-  mutate(country=winedata_clean[match(province,winedata_clean$province),1],
+  mutate(country=winedata_clean.reg[match(province,winedata_clean.reg$province),1],
          prov_country=paste(province,",",country))
 
 ggplot(province_100_dat[1:10,],aes(mean_points,mean_price)) +
@@ -149,14 +243,13 @@ ggplot(province_100_dat[1:10,],aes(mean_points,mean_price)) +
                    point.padding = 0.5,
                    segment.color = 'grey50') +
   theme_classic() +
-  labs(title="Top 10 Provinces With the Highest Scores", 
-       x="Mean Points", y="Mean Price")
+  labs(title="Top 10 Provinces by Median Score", 
+       x="Median Score", y="Median Price")
 ```
-
-Looking at provinces is a much better idea as each one in general has much similar geographical features and climate, allowing for more consistent wine quality within each categorical level. However, even provincial level aggregation may be too broad. None of the traditional wine provinces such as Burgundy, Bordeaux or Northern California made it into the top 10 average points province list. This is likely due to the large volume of wine produced in those regions which has an effect on the wine's average quality. Meanwhile small regions like Madeira (a Portuguese Atlantic island) are likely to have limited wine outputs. 
+Looking at provinces has the advantage that each categorical level will have similar geographical features and climate, and therefore wine quality (in theory). However, even provincial level aggregation may be too broad. None of the traditional wine provinces such as Burgundy, Bordeaux or Northern California made it into the top 10 average points province list. This may due to the large volume of wine produced in those regions driving down the wine's median quality. Meanwhile small regions like Madeira (a Portuguese Atlantic island) are likely to have limited wine outputs, and a higher chance of producing exclusively high-quality wines.  
 
 ```{r,echo=F}
-region_dat <- winedata_clean.reg %>% group_by(region_1) %>% summarize(mean_points=mean(points),mean_price=mean(price)) %>%
+region_dat <- winedata_clean.reg %>% group_by(region_1) %>% summarize(mean_points=median(points),mean_price=median(price)) %>%
   arrange(desc(mean_points,mean_price)) %>% 
   mutate(country=winedata_clean.reg[match(region_1,winedata_clean.reg$region_1),1],
          province=winedata_clean.reg[match(region_1,winedata_clean.reg$region_1),6],
@@ -169,18 +262,16 @@ ggplot(region_dat[1:10,],aes(mean_points,mean_price)) +
                    point.padding = 0.5,
                    segment.color = 'grey50') +
   theme_classic() +
-  labs(title="Top 10 Regions With the Highest Scores", 
-       x="Mean Points", y="Mean Price")
+  labs(title="Top 10 Regions by Median Score", 
+       x="Median Score", y="Median Price")
 ```
-
-
-Although the majority of observations also contain a region value, the lack of it does not necessarily guarantee that the observation is faulty since many wines are from small countries or too non-specific in its origin to warrant region specifications. On the flip side, having a regional label also does not gurantee its quality. Majority of wine-producing regions with high points are located in Burgundy. This has historical reasons. Compared to Bordeaux and other regions that place emphasis on individual chateaus or wineries, Burgundy is famous for its regional consistency as all wines made from the same area, no matter the prodoucer, is often labeled as the same variety. This speaks to Burgundian winemakers' confidence in the reputation of its terroir, or the set of all attributes of the phenotype of the land. 
+Although the majority of observations also contain a region value, the lack of it does not necessarily suggest that the observation is erronious since many wines are from small countries or too non-specific in its origin to warrant region specifications. On the flip side, having a regional label also does not gurantee its quality. The majority of wine-producing regions with high points are located in Burgundy, which has a rich history of wine production. Compared to Bordeaux and other regions that place emphasis on individual chateaus or wineries, Burgundy is famous for its regional consistency as all wines made from the same area - no matter the producer - are often labeled as the same variety. This speaks to Burgundian winemakers' confidence in the reputation of its terroir, or the set of all attributes of the phenotype of the land.  
 
 ```{r,echo=F}
-winery_dat <- winedata_clean %>% group_by(winery) %>% summarize(mean_points=mean(points),mean_price=mean(price)) %>%
+winery_dat <- winedata_clean.reg %>% group_by(winery) %>% summarize(mean_points=median(points),mean_price=median(price)) %>%
   arrange(desc(mean_points,mean_price)) %>%
-  mutate(country=winedata_clean[match(winery,winedata_clean$winery),1],
-         province=winedata_clean[match(winery,winedata_clean$winery),6],
+  mutate(country=winedata_clean.reg[match(winery,winedata_clean.reg$winery),1],
+         province=winedata_clean.reg[match(winery,winedata_clean.reg$winery),6],
          winery_prov=paste(winery,",",province))
 
 ggplot(winery_dat[1:10,],aes(mean_points,mean_price)) +
@@ -190,11 +281,12 @@ ggplot(winery_dat[1:10,],aes(mean_points,mean_price)) +
                    point.padding = 0.3,
                    segment.color = 'grey50') +
   theme_classic() +
-  labs(title="Top 10 Wineries With the Highest Scores", 
-       x="Mean Points", y="Mean Price")
+  labs(title="Top 10 Wineries by Median Score", 
+       x="Median Points", y="Median Price")
 ```
+The highest rated (and often most costly) wineries tend to be located in either France or California. This is somewhat fitting, as French and Californian wines have been in competing fiercely since the 1976 Judgment of Paris.
 
-Generally European wineries charge a higher price than their Californian counterparts despite similairty in points. This reflects the higher esteem held by French wine despite the blind tasting catastrophe that it suffered during the 1976 Judgment of Paris. 
+
 
 ```{r}
 winedata_clean %>% filter(winery!="") %>% group_by(winery) %>% summarise(num_produced=n()) %>% arrange(desc(num_produced)) %>%
@@ -216,27 +308,27 @@ dtm_ready_df = winedata_subset[ ,c(1, 2)]
 
 ```{r}
 #Okay, let's create a corpus, clean it, and create a DTM!
-library(tm)
-corp.original <- VCorpus(VectorSource(dtm_ready_df$description))
-corp = tm_map(corp.original, removePunctuation) 
-corp = tm_map(corp, removeNumbers) 
-corp = tm_map(corp, content_transformer(tolower) ,lazy=TRUE) 
-corp = tm_map(corp, content_transformer(removeWords), c("like") ,lazy=TRUE)
-corp = tm_map(corp, content_transformer(removeWords), stopwords("english"))
-corp = tm_map(corp, content_transformer(stemDocument) ,lazy=TRUE) 
-corp = tm_map(corp, stripWhitespace)
 
-# Convert to document term matrix
-dtm <- DocumentTermMatrix(corp)
-# Reduce matrix sparsity to better deal with LDA later on
-dtms = removeSparseTerms(dtm, .995)
-dtm_matrix = as.matrix(dtms)
+# corp.original <- VCorpus(VectorSource(dtm_ready_df$description))
+# corp = tm_map(corp.original, removePunctuation) 
+# corp = tm_map(corp, removeNumbers) 
+# corp = tm_map(corp, content_transformer(tolower) ,lazy=TRUE) 
+# corp = tm_map(corp, content_transformer(removeWords), c("like") ,lazy=TRUE)
+# corp = tm_map(corp, content_transformer(removeWords), stopwords("english"))
+# corp = tm_map(corp, content_transformer(stemDocument) ,lazy=TRUE) 
+# corp = tm_map(corp, stripWhitespace)
+# 
+# # Convert to document term matrix
+# dtm <- DocumentTermMatrix(corp)
+# # Reduce matrix sparsity to better deal with LDA later on
+# dtms = removeSparseTerms(dtm, .995)
+# dtm_matrix = as.matrix(dtms)
 ```
 
 ```{r}
 #Remove wines that have no description from DTM to avoid LDA errors
-rowTotals <- apply(dtm_matrix , 1, sum) #Find the sum of words in each Document
-dtm_matrix   <- dtm_matrix[rowTotals> 0, ]           #remove all docs without words
+# rowTotals <- apply(dtm_matrix , 1, sum) #Find the sum of words in each Document
+# dtm_matrix   <- dtm_matrix[rowTotals> 0, ]           #remove all docs without words
 ```
 
 We then used our LDA model to generate the individual probabilities of each topic for each description. This effectively gave us a probability loading on each of the 20 topics, for each wine. We explored using either all 20 probability loadings or classifying each wine to the highest ranked topic. We found that when predicting for points the 20 topics probabilities resulting in a significantly lower testing error than taking the highest rank topic. Intuitively this makes sense, since wines can have complex taste profiles and may often fall into multiple topics, instead of into one cleanly.
@@ -267,9 +359,10 @@ topic 20: wine that tells of the storage process
 
 ```{r}
 #Conduct LDA for given number of topics
-library(topicmodels)
-number_of_topics = 20
-ldaOut20_all <-LDA(dtm_matrix, number_of_topics, method="Gibbs")
+
+# number_of_topics = 20
+# ldaOut20_all <-LDA(dtm_matrix, number_of_topics, method="Gibbs")
+load("C:/Users/george/Desktop/STAT 471/project/lda_20_image4.RData")
 terms(ldaOut20_all,10)
 ```
 
@@ -277,34 +370,38 @@ We also assigned the highest ranked topic for each wine, and for each of the top
 
 ```{r}
 #The following chunk will generate the topic probilities for each document:
-dic = Terms(dtms)
-
-# Specify this dictionary when creating the dtm for the new articles, which will limit the dtm it creates to only the words that also appeared in the archive. In the example below, 'ldaOut' would be the name assigned to the topic model we created in Step earlier.
-
-new_dtm = DocumentTermMatrix(corp, control=list(dictionary = dic))
-new_dtm = new_dtm[rowSums(as.matrix(new_dtm))!=0,]
-topic_probabilities20 = posterior(ldaOut20_all, new_dtm)
+# dic = Terms(dtms)
+# 
+# # Specify this dictionary when creating the dtm for the new articles, which will limit the dtm it creates to only the words that also appeared in the archive. In the example below, 'ldaOut' would be the name assigned to the topic model we created in Step earlier.
+# 
+# new_dtm = DocumentTermMatrix(corp, control=list(dictionary = dic))
+# new_dtm = new_dtm[rowSums(as.matrix(new_dtm))!=0,]
+# topic_probabilities20 = posterior(ldaOut20_all, new_dtm)
 ```
 
 ```{r}
 #Run this chunk to generate a dataframe that gives the highest ranked topic for each wine.
-articles_w_topics20 = as.data.frame(cbind(winedata_clean[rowTotals> 0, ], max.col(topic_probabilities20$topics)))
-# Rename a column in R
-colnames(articles_w_topics20)[colnames(articles_w_topics20)=="max.col(topic_probabilities20$topics)"] <- "topic"
-articles_w_topics20$topic = as.factor(articles_w_topics20$topic)
+
+# articles_w_topics20 = as.data.frame(cbind(winedata_clean[rowTotals> 0, ], max.col(topic_probabilities20$topics)))
+
+# # Rename a column in R
+
+# colnames(articles_w_topics20)[colnames(articles_w_topics20)=="max.col(topic_probabilities20$topics)"] <- "topic"
+# articles_w_topics20$topic = as.factor(articles_w_topics20$topic)
 ```
 
 ```{r}
 #Run this chunk to generate a dataframe that gives the probabilities of each topic for each wine.
-articles_w_topics20 = as.data.frame(cbind(winedata_clean[rowTotals> 0, ], (topic_probabilities20$topics)))
-# Rename a column in R
+
+# articles_w_topics20 = as.data.frame(cbind(winedata_clean[rowTotals> 0, ], (topic_probabilities20$topics)))
 ```
 
 ```{r}
 #Rename columns from topic numbers to topic_n naming convention. Example: from `1` to `topic_1`.
-for (i in 1:20){
-  colnames(articles_w_topics20)[colnames(articles_w_topics20)==i] <- paste("topic_", i, sep="")
-}
+
+# for (i in 1:20){
+#   colnames(articles_w_topics20)[colnames(articles_w_topics20)==i] <- paste("topic_", i, sep="")
+# }
 ```
 
 ```{r}
@@ -326,7 +423,7 @@ colnames(country_topic[-1])[max.col(country_topic[-1],ties.method="first")])
 province_topic <- articles_w_topics20 %>% filter(!(country_trimmed %in% "Other")) %>% group_by(province) %>% summarise(m_topic_1 = mean(topic_1), m_topic_2 = mean(topic_2), m_topic_3 = mean(topic_3), m_topic_4 = mean(topic_4), m_topic_5 = mean(topic_5), m_topic_6 = mean(topic_6), m_topic_7 = mean(topic_7), m_topic_8 = mean(topic_8), m_topic_9 = mean(topic_9), m_topic_10 = mean(topic_10), m_topic_11 = mean(topic_11), m_topic_12 = mean(topic_12), m_topic_13 = mean(topic_13), m_topic_14 = mean(topic_14), m_topic_15 = mean(topic_15), m_topic_16 = mean(topic_16), m_topic_17 = mean(topic_17), m_topic_18 = mean(topic_18), m_topic_19 = mean(topic_19), m_topic_20 = mean(topic_20), n_wine = n()) %>% filter(n_wine>1000)
 
 cbind(province_topic,max_prob_topic=
-colnames(province_topic[c(-1,-22,-23)])[max.col(province_topic[c(-1,-22,-23)],ties.method="first")])
+colnames(province_topic[c(-1,-22)])[max.col(province_topic[c(-1,-22)],ties.method="first")])
 ```
 
 We suspected that the vintage of each wine (year it was produced) may influence quality. So we extracted the year variable from the title of the review. However, since we don't know the date of each wine review we are unable to calculate the age of the wine at time of review. To accomidate for this we bucketed wines into 4 vintage groups 2010-2017, 2000-2009, 1980-1999, and 1950-1979. 
@@ -431,8 +528,8 @@ points ~ log(price) + taster_name + country_trimmed + topic_1 + topic_2 + topic_
 We obtained an adjusted R Squared of 0.515 from the training model. By validating this model with the testing data we obtained a test mean squared error of 4.57 and a residual standard error of 2.16, which means our model is significantly more accurate compared to a random guess in the range of scores. 
 ```{r}
 #Random Forest
-rf.fit <- randomForest(points ~ log_price + taster_name  + country_trimmed + topic_1 + topic_2 + topic_3 + topic_5 + topic_7 +  topic_8 + topic_10 + topic_11 + topic_14 + topic_15 + topic_17, data=train, mtry=5, ntree=100)
-summary(rf.topics)
+#rf.fit <- randomForest(points ~ log_price + taster_name  + country_trimmed + topic_1 + topic_2 + topic_3 + topic_5 + topic_7 +  topic_8 + topic_10 + topic_11 + topic_14 + topic_15 + topic_17, data=train, mtry=5, ntree=100)
+#summary(rf.fit)
 ```
 
 ```{r}
